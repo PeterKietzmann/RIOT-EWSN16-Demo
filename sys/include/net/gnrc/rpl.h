@@ -482,6 +482,35 @@ void gnrc_rpl_send(gnrc_pktsnip_t *pkt, ipv6_addr_t *src, ipv6_addr_t *dst, ipv6
  * @return  Global instance id, otherwise.
  */
 uint8_t gnrc_rpl_gen_instance_id(bool local);
+
+
+// helper
+#define RPL_MAX_PARENTS (3) // <- default value
+ipv6_addr_t* get_my_ipv6_address(ipv6_addr_t* my_address);
+extern gnrc_rpl_dodag_trail_t trail_parent_buffer[RPL_MAX_PARENTS];
+extern uint8_t do_trail;
+extern uint8_t attacker_dodag; // trail
+extern uint16_t attacker_dodag_rank; // trail
+
+struct rpl_tvo_t * rpl_tvo_auto_init(struct rpl_tvo_t * tvo, uint8_t instance, uint8_t version_number);
+void save_tvo_locally(struct rpl_tvo_local_t * tvo_copy);
+void resend_tvos(void);
+
+void* tvo_delay_over(void* args); // trail
+void delay_tvo(uint32_t seconds); //trail
+void send_TVO(ipv6_addr_t *destination, struct rpl_tvo_t * tvo,  rpl_tvo_signature_t * signature); //trail
+void send_TVO_ACK(ipv6_addr_t *destination, uint8_t sequence_number); //trail
+void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr); //trail
+void recv_rpl_tvo_ack(struct rpl_tvo_ack_t* tvo_ack, ipv6_addr_t *srcaddr); // trail
+void enable_tvo_auto_send(void); //trail
+void rpl_tvo_sign_data(void); //trail
+//void forward_rpl_tvo(ipv6_addr_t *destination); //trail
+//uint32_t global_zero_timestamp; //trail
+//void join_dodag(rpl_dodag_t * dio_dodag, ipv6_addr_t * src_addr, uint16_t parent_rank, uint8_t parent_dtsn); // trail
+uint8_t include_parent_into_trail_buffer(void); //trail
+uint8_t get_parent_from_trail_buffer(ipv6_addr_t * src_addr); // trail
+uint8_t is_parent_verified(ipv6_addr_t * src_addr, uint16_t dio_rank); //trail
+
 #ifdef __cplusplus
 }
 #endif

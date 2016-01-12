@@ -240,6 +240,105 @@ struct gnrc_rpl_instance {
     int8_t cleanup;                 /**< cleanup time in seconds */
 };
 
+
+
+/**
+ * @brief TRAIL temporary DODAG representation
+ */
+struct gnrc_rpl_dodag_trail {
+    ipv6_addr_t dodag_id;           /**< id of the DODAG */
+    gnrc_rpl_parent_t *parents;     /**< pointer to the parents list of this DODAG */
+    gnrc_rpl_instance_t *instance;  /**< pointer to the instance that this dodag is part of */
+    uint8_t prefix_len;             /**< length of the prefix for the DODAG id */
+    uint32_t addr_preferred;        /**< time in seconds the DODAG id is preferred */
+    uint32_t addr_valid;            /**< time in seconds the DODAG id is valid */
+    uint8_t dtsn;                   /**< DAO Trigger Sequence Number */
+    uint8_t prf;                    /**< preferred flag */
+    uint8_t dio_interval_doubl;     /**< trickle Imax parameter */
+    uint8_t dio_min;                /**< trickle Imin parameter */
+    uint8_t dio_redun;              /**< trickle k parameter */
+    uint8_t default_lifetime;       /**< lifetime of routes (lifetime * unit) */
+    uint16_t lifetime_unit;         /**< unit in seconds of the lifetime */
+    uint8_t version;                /**< version of this DODAG */
+    uint8_t grounded;               /**< grounded flag */
+    uint16_t my_rank;               /**< rank/position in the DODAG */
+    uint8_t node_status;            /**< leaf, normal, or root node */
+    uint8_t dao_seq;                /**< dao sequence number */
+    uint8_t dao_counter;            /**< amount of retried DAOs */
+    bool dao_ack_received;          /**< flag to check for DAO-ACK */
+    bool dodag_conf_requested;      /**< flag to send DODAG_CONF options */
+    bool prefix_info_requested;     /**< flag to send PREFIX_INFO options */
+    uint8_t dao_time;               /**< time to schedule a DAO in seconds */
+    trickle_t trickle;              /**< trickle representation */
+    
+    uint16_t parent_rank;
+    uint8_t parent_dtsn;
+    ipv6_addr_t parent_addr;
+    uint8_t instance_id;
+    //uint8_t pending;
+    //uint8_t verified;
+    uint8_t in_progress; //indicates if parent-verification is pending: not overwritten unless != 1
+};
+typedef struct gnrc_rpl_dodag_trail gnrc_rpl_dodag_trail_t;
+
+
+#define ICMP_CODE_TVO				0x04 // trail code
+#define ICMP_CODE_TVO_ACK           0x05 // trail tvo ack
+#define TVO_BASE_LEN                27 // trail tvo 26 + 48 byte signature
+#define TVO_ACK_LEN                  3 // trail tvo
+#define TVO_LOCAL_BUFFER_LEN        10 //trail: for TVO ACK keep TVOs
+#define DEFAULT_WAIT_FOR_TVO_ACK     4 // trail TVO
+#define LONG_WAIT_FOR_TVO_ACK        1000000 // trail TVO
+#define TEST_WAIT_FOR_TVO_ACK        1000000 // trail TVO
+#define TVO_SEND_RETRIES             10 // trail TVO
+
+
+//trail signature
+typedef struct __attribute__ ((packed)) signature_t {
+    uint8_t uint8[12];
+} signature_t;
+
+//trail rpl_tvo
+struct __attribute__((packed)) rpl_tvo_t{
+    uint8_t rpl_instanceid;
+    uint8_t version_number;
+    uint8_t tvo_seq;
+    uint16_t rank;
+    uint32_t nonce;
+    ipv6_addr_t src_addr;
+    bool s_flag;
+  //  signature_t signature;
+};
+
+//trail rpl_tvo
+struct __attribute__((packed)) rpl_tvo_local_t{
+    uint8_t rpl_instanceid;
+    uint8_t version_number;
+    uint8_t tvo_seq;
+    uint16_t rank;
+    uint32_t nonce;
+    ipv6_addr_t src_addr;
+    bool s_flag;
+    ipv6_addr_t dst_addr; //next hop of TVO
+    ipv6_addr_t prev_hop_addr; // hop from which TVO has been received
+    uint8_t his_tvo_seq;
+    uint32_t timestamp_received;
+    uint8_t number_resend;
+  //  signature_t signature;
+};
+
+// trail signature
+typedef struct __attribute__((packed)) {
+	uint8_t uint8[1];
+} rpl_tvo_signature_t;
+
+// trail tvo-ack
+struct __attribute__((packed)) rpl_tvo_ack_t{
+    uint8_t rpl_instanceid;
+    uint8_t tvo_seq;
+    uint8_t status;
+};
+
 #ifdef __cplusplus
 }
 #endif

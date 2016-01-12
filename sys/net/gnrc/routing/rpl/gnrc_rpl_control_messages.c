@@ -507,6 +507,12 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
 
     len -= (sizeof(gnrc_rpl_dio_t) + sizeof(icmpv6_hdr_t));
 
+    //uint16_t myRank = 0;
+    uint8_t trail_index = 0;
+    uint8_t flag_send_TVO = 0;
+    ipv6_addr_t my_address;
+    get_my_ipv6_address(&my_address);
+
     if (gnrc_rpl_instance_add(dio->instance_id, &inst)) {
         /* new instance and DODAG */
 
@@ -524,20 +530,21 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
 
         DEBUG("RPL: Joined DODAG (%s).\n",
                 ipv6_addr_to_str(addr_str, &dio->dodag_id, sizeof(addr_str)));
-
+        
         gnrc_rpl_parent_t *parent = NULL;
-
-        if (!gnrc_rpl_parent_add_by_addr(dodag, src, &parent) && (parent == NULL)) {
-            DEBUG("RPL: Could not allocate new parent.\n");
-            gnrc_rpl_instance_remove(inst);
-            return;
+        
+        if(!do_trail){
+            if (!gnrc_rpl_parent_add_by_addr(dodag, src, &parent) && (parent == NULL)) {
+                DEBUG("RPL: Could not allocate new parent.\n");
+                gnrc_rpl_instance_remove(inst);
+                return;
+            }
+            parent->rank = byteorder_ntohs(dio->rank);
         }
-
+        
         dodag->version = dio->version_number;
         dodag->grounded = dio->g_mop_prf >> GNRC_RPL_GROUNDED_SHIFT;
         dodag->prf = dio->g_mop_prf & GNRC_RPL_PRF_MASK;
-
-        parent->rank = byteorder_ntohs(dio->rank);
 
         uint32_t included_opts = 0;
         if(!_parse_options(GNRC_RPL_ICMPV6_CODE_DIO, inst, (gnrc_rpl_opt_t *)(dio + 1), len,
@@ -559,8 +566,14 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
                       GNRC_RPL_MSG_TYPE_TRICKLE_CALLBACK, (1 << dodag->dio_min),
                       dodag->dio_interval_doubl, dodag->dio_redun);
 
-        gnrc_rpl_parent_update(dodag, parent);
-        return;
+        if(!do_trail){
+            gnrc_rpl_parent_update(dodag, parent);
+            return;
+        }
+        else {
+			flag_send_TVO = 1;
+        }
+        
     }
     else if (inst == NULL) {
         DEBUG("RPL: Could not allocate a new instance.\n");
@@ -577,6 +590,60 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
             DEBUG("RPL: DIO received from another DODAG, but same instance - ignore\n");
             return;
         }
+
+        if (byteorder_ntohs(dio->rank) >= dodag->my_rank) {
+            printf("m: ID %u received msg DIO from ID %u #color7 - Rank %u\n", my_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
+            return;
+        }
+    }
+
+    printf("m: ID %u received msg DIO from ID %u #color6  - Rank %u\n", my_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
+
+    if(do_trail){
+		//check if node in Routing table with *that* rank
+		if((flag_send_TVO == 0) && is_parent_verified(src, byteorder_ntohs(dio->rank))){
+			//trail_index = get_parent_from_trail_buffer(&(ipv6_buf->srcaddr));
+			//set parent "verified" in trail_parent_buffer
+			//if(trail_index == 255){
+			//	printf("ERROR: parent is not in list, but verified -> something is wrong... \n");
+			//	return;
+			//}
+			//trail_parent_buffer[trail_index].verified = 1;
+			//trail_parent_buffer[trail_index].pending = 0;
+			flag_send_TVO = 0;
+		} else {
+			trail_index = get_parent_from_trail_buffer(src);
+			if(trail_index == 255){
+				//parent not in buffer
+				// -> not waiting for TVO: send new TVO!
+				trail_index = include_parent_into_trail_buffer();
+				if(trail_index == 255){
+
+					printf("ERROR: trail buffer is full ... \n");
+					return;
+				}
+				flag_send_TVO = 1;
+				//trail_parent_buffer[trail_index].verified = 0;
+				//trail_parent_buffer[trail_index].pending = 1;
+				//printf("set TRAIL buffer at %u to verified: %u and pending: %u\n",trail_index,trail_parent_buffer[trail_index].verified, trail_parent_buffer[trail_index].pending);
+			}
+			else {
+
+				//parent possibly chose different rank
+				if(byteorder_ntohs(dio->rank) != trail_parent_buffer[trail_index].parent_rank){
+					//re-schedule TVO
+					flag_send_TVO = 1;
+				}
+				else {
+					// parent in buffer: waiting for tvo: don't send new one.
+					printf("still waiting for verification... ignoring DIO \n");
+					//send_tvo = 0;
+					return;
+				}
+
+			}
+
+		}
     }
 
     if (inst->mop != ((dio->g_mop_prf >> GNRC_RPL_MOP_SHIFT) & GNRC_RPL_SHIFTED_MOP_MASK)) {
@@ -609,48 +676,106 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
         return;
     }
 
-    gnrc_rpl_parent_t *parent = NULL;
+    if( !do_trail || (flag_send_TVO == 0)) {
+        // if TRAIL should NOT be used or the parent and its rank is already verified
+        gnrc_rpl_parent_t *parent = NULL;
 
-    if (!gnrc_rpl_parent_add_by_addr(dodag, src, &parent) && (parent == NULL)) {
-        DEBUG("RPL: Could not allocate new parent.\n");
-        return;
-    }
-    /* cppcheck-suppress nullPointer */
-    else if (parent != NULL) {
-        trickle_increment_counter(&dodag->trickle);
-    }
-
-    /* gnrc_rpl_parent_add_by_addr should have set this already */
-    assert(parent != NULL);
-
-    parent->rank = byteorder_ntohs(dio->rank);
-
-    gnrc_rpl_parent_update(dodag, parent);
-
-    /* sender of incoming DIO is not a parent of mine (anymore) and has an INFINITE rank
-       and I have a rank != INFINITE_RANK */
-    if (parent->state == 0) {
-        if ((byteorder_ntohs(dio->rank) == GNRC_RPL_INFINITE_RANK)
-             && (dodag->my_rank != GNRC_RPL_INFINITE_RANK)) {
-            trickle_reset_timer(&dodag->trickle);
+        if (!gnrc_rpl_parent_add_by_addr(dodag, src, &parent) && (parent == NULL)) {
+            DEBUG("RPL: Could not allocate new parent.\n");
             return;
         }
+        /* cppcheck-suppress nullPointer */
+        else if (parent != NULL) {
+            trickle_increment_counter(&dodag->trickle);
+        }
+
+        /* gnrc_rpl_parent_add_by_addr should have set this already */
+        assert(parent != NULL);
+
+        parent->rank = byteorder_ntohs(dio->rank);
+
+        gnrc_rpl_parent_update(dodag, parent);
+
+        /* sender of incoming DIO is not a parent of mine (anymore) and has an INFINITE rank
+           and I have a rank != INFINITE_RANK */
+        if (parent->state == 0) {
+            if ((byteorder_ntohs(dio->rank) == GNRC_RPL_INFINITE_RANK)
+                 && (dodag->my_rank != GNRC_RPL_INFINITE_RANK)) {
+                trickle_reset_timer(&dodag->trickle);
+                return;
+            }
+        }
+        /* incoming DIO is from pref. parent */
+        else if (parent == dodag->parents) {
+            if (parent->dtsn != dio->dtsn) {
+                gnrc_rpl_delay_dao(dodag);
+            }
+            parent->dtsn = dio->dtsn;
+            dodag->grounded = dio->g_mop_prf >> GNRC_RPL_GROUNDED_SHIFT;
+            dodag->prf = dio->g_mop_prf & GNRC_RPL_PRF_MASK;
+            uint32_t included_opts = 0;
+            if(!_parse_options(GNRC_RPL_ICMPV6_CODE_DIO, inst, (gnrc_rpl_opt_t *)(dio + 1), len,
+                               NULL, &included_opts)) {
+                DEBUG("RPL: Error encountered during DIO option parsing - remove DODAG\n");
+                gnrc_rpl_instance_remove(inst);
+                return;
+            }
+        }
     }
-    /* incoming DIO is from pref. parent */
-    else if (parent == dodag->parents) {
-        if (parent->dtsn != dio->dtsn) {
-            gnrc_rpl_delay_dao(dodag);
+    else {
+      
+        memcpy( &trail_parent_buffer[trail_index], dodag, sizeof(*dodag));
+        
+        trail_parent_buffer[trail_index].grounded = dio->g_mop_prf >> GNRC_RPL_GROUNDED_SHIFT;
+        trail_parent_buffer[trail_index].prf = dio->g_mop_prf & GNRC_RPL_PRF_MASK;
+		trail_parent_buffer[trail_index].grounded = dio->g_mop_prf >> GNRC_RPL_GROUNDED_SHIFT;
+		trail_parent_buffer[trail_index].prf = (dio->g_mop_prf & GNRC_RPL_PRF_MASK);
+		trail_parent_buffer[trail_index].version = dio->version_number;
+		trail_parent_buffer[trail_index].instance = inst;
+		trail_parent_buffer[trail_index].instance_id = dio->instance_id;
+        trail_parent_buffer[trail_index].parent_dtsn = dio->dtsn;
+        trail_parent_buffer[trail_index].parent_rank = byteorder_ntohs(dio->rank);
+        trail_parent_buffer[trail_index].parent_addr = *src;
+        
+        printf("Parent's rank %u unverified .. initializing TRAIL\n", byteorder_ntohs(dio->rank));
+		struct rpl_tvo_t tvo;
+		printf("TVO created\n");
+		rpl_tvo_auto_init(&tvo, dio->instance_id, dio->version_number);
+		printf("TVO initialized\n");
+
+		ipv6_addr_t next_hop;
+		memcpy(&next_hop, src, sizeof(next_hop));
+        
+        ipv6_addr_t all_RPL_nodes = GNRC_RPL_ALL_NODES_ADDR;
+        kernel_pid_t if_id;
+        if ((if_id = gnrc_ipv6_netif_find_by_addr(NULL, &all_RPL_nodes)) != KERNEL_PID_UNDEF) {
+            fib_add_entry(&gnrc_ipv6_fib_table, if_id, src->u8, sizeof(ipv6_addr_t), (0x0),
+                          src->u8, sizeof(ipv6_addr_t), FIB_FLAG_RPL_ROUTE,
+                          (dodag->default_lifetime * dodag->lifetime_unit) * SEC_IN_MS);
         }
-        parent->dtsn = dio->dtsn;
-        dodag->grounded = dio->g_mop_prf >> GNRC_RPL_GROUNDED_SHIFT;
-        dodag->prf = dio->g_mop_prf & GNRC_RPL_PRF_MASK;
-        uint32_t included_opts = 0;
-        if(!_parse_options(GNRC_RPL_ICMPV6_CODE_DIO, inst, (gnrc_rpl_opt_t *)(dio + 1), len,
-                           NULL, &included_opts)) {
-            DEBUG("RPL: Error encountered during DIO option parsing - remove DODAG\n");
-            gnrc_rpl_instance_remove(inst);
-            return;
-        }
+                              
+		//rpl_add_routing_entry(&ipv6_buf->srcaddr, &ipv6_buf->srcaddr, 1000);
+	//	ipv6_addr_set_all_nodes_addr(&next_hop);
+
+		//////////
+		struct rpl_tvo_local_t tvo_inst;
+		// copy tvo to local_tvo
+		memset(&tvo_inst, 0, sizeof(tvo_inst));
+		memcpy(&tvo_inst, &tvo, sizeof(tvo_inst));
+		// assign his_counter (tvo.seqnr) to local tvo.his_seq_num
+		tvo_inst.his_tvo_seq = 0;
+		tvo_inst.number_resend = 0;
+		// give local tvo a timestamp
+		
+		tvo_inst.timestamp_received = xtimer_now();//now.microseconds;
+		//save destination / source
+		memcpy(&(tvo_inst.dst_addr), src, sizeof(tvo_inst.dst_addr));
+		// save_tvo_locally(local_tvo);
+		save_tvo_locally(&tvo_inst);
+		///
+
+		delay_tvo(DEFAULT_WAIT_FOR_TVO_ACK);
+		send_TVO(&next_hop, &tvo, NULL);
     }
 }
 

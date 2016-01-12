@@ -301,7 +301,13 @@ static gnrc_rpl_parent_t *_gnrc_rpl_find_preferred_parent(gnrc_rpl_dodag_t *doda
                       * SEC_IN_MS);
     }
 
-    dodag->my_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
+    if (attacker_dodag == 0) {
+        dodag->my_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
+    } 
+    else {
+       dodag->my_rank = attacker_dodag_rank; 
+    }
+        
     if (dodag->my_rank != old_rank) {
         trickle_reset_timer(&dodag->trickle);
     }
