@@ -231,7 +231,7 @@ void delay_tvo(uint32_t seconds){
 	srand(now.microseconds);
 	uint32_t random = rand() % 1000000;
 
-	printf("setting new TVO delay to %u seconds and %u ms\n",seconds, (random/1000));
+	printf("setting new TVO delay to %u seconds and %u ms\n", (unsigned int)seconds, (unsigned int)(random/1000));
 	//tvo_time = timex_set(seconds,random);
     tvo_resend_seconds = seconds;
     tvo_resend_micro = random;
@@ -369,7 +369,7 @@ void save_tvo_locally(struct rpl_tvo_local_t * tvo_copy)
 			found_spot = 1;
 			//tvo_local_buffer[i] = tvo_copy;
 			memcpy(&tvo_local_buffer[i], tvo_copy, sizeof(*tvo_copy));
-			printf("blocking tvo buffer at %u for TVO (seq: %u)\n",i, tvo_copy->tvo_seq);
+			printf("blocking tvo buffer at %u for TVO (seq: %u)\n", (unsigned int)i, (unsigned int)(tvo_copy->tvo_seq));
 			tvo_local_flags[i] = 1;
 			break;
 		}
@@ -381,7 +381,7 @@ void save_tvo_locally(struct rpl_tvo_local_t * tvo_copy)
 	if(found_spot == 0){
 		memcpy(&tvo_local_buffer[j], tvo_copy, sizeof(*tvo_copy));
 		tvo_local_flags[j] = 1;
-		printf("blocking tvo buffer at %u\n",j);
+		printf("blocking tvo buffer at %u\n", (unsigned int)j);
 		//tvo_local_buffer[j] = tvo_copy;
 	}
 }
@@ -441,7 +441,7 @@ void resend_tvos(void)
 
 			}
 			if (tvo_local_buffer[i].number_resend >= TVO_SEND_RETRIES){
-				printf("max number of resends reached: freeing tvo buffer at %u\n",i);
+				printf("max number of resends reached: freeing tvo buffer at %u\n",(unsigned int)i);
 				tvo_local_flags[i] = 0; //max number of resends, free buffer
 				resend--;
 			}
@@ -615,6 +615,9 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
     rpl_tvo_signature_t *signature = NULL;
     ipv6_addr_t my_address;
     ipv6_addr_t next_hop;
+
+	memset(my_address.u8, 0, sizeof(&my_address));
+	memset(next_hop.u8, 0, sizeof(&next_hop));
 
 	if (tvo->s_flag) {
         signature = (rpl_tvo_signature_t*)(tvo+1);
