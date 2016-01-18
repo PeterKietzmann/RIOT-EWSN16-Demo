@@ -62,7 +62,7 @@ gnrc_rpl_dodag_trail_t trail_parent_buffer[RPL_MAX_PARENTS]; //trail: buffer par
 uint8_t tvo_sequence_number = 0; // trail
 //uint8_t tvo_pending = 1; // trail: defines if a verification is pending
 //uint8_t tvo_parent_verified = 1; // trail: defines if a verification is pending
-uint8_t do_trail = 0; // trail: enables / disables trail on startup
+uint8_t do_trail = 1; // trail: enables / disables trail on startup
 uint8_t attacker = 0; // trail: enables / disables attacker mode on startup
 uint16_t attacker_rank = 0; // trail: rank of the attacker -> is constant
 uint16_t ignore_root_addr = 0;
@@ -75,38 +75,48 @@ uint8_t tvo_local_flags[TVO_LOCAL_BUFFER_LEN]; //trail
 
 /* helper for TRAIL legacy migration */
 
+static mutex_t _get_my_instance_mutex = MUTEX_INIT;
 /**
  * @return the FIRST RPL instance of this node that is active 
  */
 static gnrc_rpl_instance_t* _get_my_instance(void)
 {
+    mutex_lock(&_get_my_instance_mutex);
     gnrc_rpl_instance_t *inst;
     for (int i = 0; i < GNRC_RPL_INSTANCES_NUMOF; ++i) {
         inst = &gnrc_rpl_instances[i];
         if (inst->state != 0) {
+            mutex_unlock(&_get_my_instance_mutex);
             return inst;
         }
     }
+    mutex_unlock(&_get_my_instance_mutex);
     return NULL;
 }
 
+static mutex_t rpl_get_my_dodag_mutex = MUTEX_INIT;
 /**
  * @return the DODAG of the first instance of this node
  */
 static gnrc_rpl_dodag_t* rpl_get_my_dodag(void)
 {
+    mutex_lock(&rpl_get_my_dodag_mutex);
     gnrc_rpl_instance_t *inst = _get_my_instance();
     if (inst != NULL) {
+        mutex_unlock(&rpl_get_my_dodag_mutex);
         return &(inst->dodag);
     }
+    mutex_unlock(&rpl_get_my_dodag_mutex);
     return NULL;
 }
 
+static mutex_t get_my_ipv6_address_mutex = MUTEX_INIT;
 /**
  * @return the IPv6 address for this node on the first available interface
  */
 ipv6_addr_t* get_my_ipv6_address(ipv6_addr_t* my_address)
 {
+    mutex_lock(&get_my_ipv6_address_mutex);
     kernel_pid_t iface = KERNEL_PID_UNDEF;
     kernel_pid_t ifs[GNRC_NETIF_NUMOF];
     size_t numof = gnrc_netif_get(ifs);
@@ -118,25 +128,30 @@ ipv6_addr_t* get_my_ipv6_address(ipv6_addr_t* my_address)
     for (int i = 0; i < GNRC_IPV6_NETIF_ADDR_NUMOF; i++) {
         if (!ipv6_addr_is_unspecified(&entry->addrs[i].addr)) {
             memcpy(my_address, &(entry->addrs[i].addr), sizeof(*my_address));
+            mutex_unlock(&get_my_ipv6_address_mutex);
             return my_address;
         }
     }
+    mutex_unlock(&get_my_ipv6_address_mutex);
     return NULL;
 }
 
+static mutex_t rpl_find_parent_mutex = MUTEX_INIT;
 /**
  * @return the parent matching the given IPv6 address
  */
 gnrc_rpl_parent_t *rpl_find_parent(ipv6_addr_t* src_addr)
 {
     gnrc_rpl_parent_t *parent;
-    
+    mutex_lock(&rpl_find_parent_mutex);
     for (uint8_t i = 0; i < GNRC_RPL_PARENTS_NUMOF; ++i) {
         parent = &gnrc_rpl_parents[i];
         if (ipv6_addr_equal(&(parent->addr), src_addr) == (sizeof(*src_addr)<<3) ) {
+            mutex_unlock(&rpl_find_parent_mutex);
             return parent;
         }
     }
+    mutex_unlock(&rpl_find_parent_mutex);
     return NULL;
 }
 
@@ -169,10 +184,10 @@ void ignore_root(uint16_t root_addr)
 void* tvo_delay_over(void* args){
     (void)args;
 
+xtimer_t tvo_timer_local; // trail
+
         while(1){
-
                 thread_sleep();
-
                 //if((tvo_ack_received == false) && (tvo_counter < TVO_SEND_RETRIES)){
          //       if(tvo_counter < TVO_SEND_RETRIES){
  //                       tvo_counter++;
@@ -196,8 +211,8 @@ void* tvo_delay_over(void* args){
                         vtimer_remove(&tvo_timer);
                         vtimer_set_wakeup(&tvo_timer, tvo_time, tvo_delay_over_pid);
                         */
-                        xtimer_remove(&tvo_timer);
-                        xtimer_set_wakeup(&tvo_timer, (tvo_resend_seconds*SEC_IN_USEC +tvo_resend_micro), tvo_delay_over_pid);
+                        xtimer_remove(&tvo_timer_local);
+                        xtimer_set_wakeup(&tvo_timer_local, (tvo_resend_seconds*SEC_IN_USEC +tvo_resend_micro), tvo_delay_over_pid);
     //            }
         //        else if (tvo_ack_received == false){
         //                long_delay_tvo();
@@ -423,6 +438,7 @@ void resend_tvos(void)
 				tvo_local_buffer[i].number_resend++;
 				//usleep(500000);
                 xtimer_usleep(250000);
+
 			}
 			if (tvo_local_buffer[i].number_resend >= TVO_SEND_RETRIES){
 				printf("max number of resends reached: freeing tvo buffer at %u\n",i);
@@ -504,13 +520,13 @@ void send_TVO(ipv6_addr_t *destination, struct rpl_tvo_t *tvo, rpl_tvo_signature
     gnrc_pktsnip_t *pkt;
     icmpv6_hdr_t *icmp;
     struct rpl_tvo_t *tvo_snd;
-
+    rpl_tvo_signature_t *sig_snd;
+    
     uint8_t size_signature = 0;
     int size = sizeof(icmpv6_hdr_t) + sizeof(*tvo_snd);
     if(signature != NULL && tvo->s_flag){
 		size_signature = sizeof(*signature);
     }
-    
 
     if ((pkt = gnrc_icmpv6_build(NULL, ICMPV6_RPL_CTRL, ICMP_CODE_TVO, size+size_signature)) == NULL) {
         DEBUG("RPL: Send TVO - no space left in packet buffer\n");
@@ -519,12 +535,14 @@ void send_TVO(ipv6_addr_t *destination, struct rpl_tvo_t *tvo, rpl_tvo_signature
 
     icmp = (icmpv6_hdr_t *)pkt->data;
     tvo_snd = (struct rpl_tvo_t *)(icmp + 1);
-
+    sig_snd = (rpl_tvo_signature_t *)(tvo_snd + 1);
+    
     memset(tvo_snd, 0, sizeof(*tvo_snd));
     memcpy(tvo_snd, tvo, sizeof(*tvo));
     if(size_signature > 0) {
-        memcpy((tvo_snd+sizeof(*tvo)), signature, size_signature);
+        memcpy(sig_snd, signature, size_signature);
     }
+    
     
     gnrc_rpl_instance_t *inst = _get_my_instance();
     gnrc_rpl_send(pkt, NULL, destination, (inst? &(inst->dodag.dodag_id) : NULL));
@@ -556,13 +574,16 @@ void send_TVO_ACK(ipv6_addr_t *destination, uint8_t sequence_number)
 
     gnrc_pktsnip_t *pkt;
     icmpv6_hdr_t *icmp;
-    if ((pkt = gnrc_icmpv6_build(NULL, ICMPV6_RPL_CTRL, ICMP_CODE_TVO_ACK, sizeof(*tvo_ack))) == NULL) {
+    int size = sizeof(icmpv6_hdr_t) + sizeof(*tvo_ack);
+    if ((pkt = gnrc_icmpv6_build(NULL, ICMPV6_RPL_CTRL, ICMP_CODE_TVO_ACK, size)) == NULL) {
         DEBUG("RPL: Send TVO-ACK - no space left in packet buffer\n");
         return;
     }
-    
+   
     icmp = (icmpv6_hdr_t *)pkt->data;
     tvo_ack = (struct rpl_tvo_ack_t *)(icmp + 1);
+    memset(tvo_ack, 0, sizeof(*tvo_ack));
+    
     tvo_ack->rpl_instanceid = inst->id;
     tvo_ack->tvo_seq = sequence_number;
     tvo_ack->status = 0;
@@ -594,10 +615,9 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
     rpl_tvo_signature_t *signature = NULL;
     ipv6_addr_t my_address;
     ipv6_addr_t next_hop;
-    
 
 	if (tvo->s_flag) {
-        signature = (rpl_tvo_signature_t*)(tvo+(sizeof(*tvo)));
+        signature = (rpl_tvo_signature_t*)(tvo+1);
     }
 
 	 struct rpl_tvo_local_t *local_tvo = has_tvo_been_received(srcaddr, tvo->tvo_seq);
@@ -745,7 +765,7 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 		 * received tvo on way to root
 		 */
 		printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
-
+        my_dodag = rpl_get_my_dodag();
 		//TVO is a request: on the way to the root
 		if(my_dodag == NULL){
 			printf("** Not in network, yet - dropping TVO **\n");
@@ -797,10 +817,11 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 		if(my_dodag->my_rank == GNRC_RPL_ROOT_RANK){
 			//rpl_tvo_signature_buf = get_tvo_signature_buf(TVO_BASE_LEN);
 			//memset(rpl_tvo_signature_buf, 0, sizeof(*rpl_tvo_signature_buf));
-			
-            memset(signature, 0, sizeof(*signature));
+            rpl_tvo_signature_t sig_mem;
+            memset(&sig_mem, 0, sizeof(rpl_tvo_signature_t));
+            signature = &sig_mem;
             printf("Signing TVO ... ");
-			signature->uint8[0] = 123;
+			signature->uint8[0] = 0xab;//123;
 			printf("done\n");
 
 			tvo->s_flag = 1;
@@ -810,7 +831,7 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
             kernel_pid_t iface_id = KERNEL_PID_UNDEF;
             size_t next_hop_size = sizeof(ipv6_addr_t);
             uint32_t next_hop_flags = 0;
-            
+
             fib_get_next_hop(&gnrc_ipv6_fib_table, &iface_id,
                      next_hop.u8, &next_hop_size,
                      &next_hop_flags, tvo->src_addr.u8, sizeof(ipv6_addr_t), 0);
@@ -855,7 +876,6 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 	// send ack?
 
 	send_TVO_ACK(srcaddr, local_tvo->his_tvo_seq);
-
 	send_TVO(&next_hop, tvo, signature);
 	delay_tvo(DEFAULT_WAIT_FOR_TVO_ACK);
 }
@@ -872,7 +892,6 @@ void recv_rpl_tvo_ack(struct rpl_tvo_ack_t* tvo_ack, ipv6_addr_t *srcaddr)
    // char addr_str[IPV6_MAX_ADDR_STR_LEN];
     //printf("*** received TVO-ACK (seq: %u) from %s\n", rpl_tvo_ack_buf->tvo_seq ,ipv6_addr_to_str(addr_str, &(ipv6_buf->srcaddr)));
    // printf("*** received TVO-ACK from *ID %u* (seq: %u)\n", ipv6_buf->srcaddr.uint8[15], rpl_tvo_ack_buf->tvo_seq);
-   
    ipv6_addr_t my_address;
     if ( get_my_ipv6_address(&my_address) != NULL ) {
         printf("m: ID %u received msg TVO_ACK from ID %u #color11 - Seq. %u\n", my_address.u8[15],  srcaddr->u8[15], tvo_ack->tvo_seq);
@@ -1006,6 +1025,18 @@ static void _receive(gnrc_pktsnip_t *icmpv6)
             gnrc_rpl_recv_DAO_ACK((gnrc_rpl_dao_ack_t *)(icmpv6_hdr + 1),
                     byteorder_ntohs(ipv6_hdr->len));
             break;
+        case (ICMP_CODE_TVO): {puts("ICMP TVO");
+					recv_rpl_tvo((struct rpl_tvo_t *)(icmpv6_hdr + 1),
+					&ipv6_hdr->src);
+					break;
+				 }
+
+		case (ICMP_CODE_TVO_ACK): {puts("ICMP TVO_ACK");
+			recv_rpl_tvo_ack((struct rpl_tvo_ack_t *)(icmpv6_hdr + 1),
+					&ipv6_hdr->src);
+			
+			break;
+		 }
         default:
             DEBUG("RPL: Unknown ICMPV6 code received\n");
             break;
