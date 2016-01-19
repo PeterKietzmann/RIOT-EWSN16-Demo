@@ -1028,13 +1028,13 @@ static void _receive(gnrc_pktsnip_t *icmpv6)
             gnrc_rpl_recv_DAO_ACK((gnrc_rpl_dao_ack_t *)(icmpv6_hdr + 1),
                     byteorder_ntohs(ipv6_hdr->len));
             break;
-        case (ICMP_CODE_TVO): {puts("ICMP TVO");
+        case (ICMP_CODE_TVO): {
 					recv_rpl_tvo((struct rpl_tvo_t *)(icmpv6_hdr + 1),
 					&ipv6_hdr->src);
 					break;
 				 }
 
-		case (ICMP_CODE_TVO_ACK): {puts("ICMP TVO_ACK");
+		case (ICMP_CODE_TVO_ACK): {
 			recv_rpl_tvo_ack((struct rpl_tvo_ack_t *)(icmpv6_hdr + 1),
 					&ipv6_hdr->src);
 			
