@@ -110,6 +110,9 @@ extern int _zep_init(int argc, char **argv);
 
 #ifdef MODULE_GNRC_RPL
 extern int _gnrc_rpl(int argc, char **argv);
+extern int start_trail(int argc, char **argv);
+extern int ignr(int argc, char **argv);
+extern int attack(int argc, char **argv);
 #endif
 
 #ifdef MODULE_GNRC_SIXLOWPAN_CTX
@@ -191,6 +194,9 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_GNRC_RPL
     {"rpl", "rpl configuration tool [help|init|rm|root|show]", _gnrc_rpl },
+    { "trail", "activate TRAIL", start_trail },
+    { "ignore", "ignore node TRAIL", ignr },
+    { "attack", "start attack with given rank TRAIL", attack },
 #endif
 #ifdef MODULE_GNRC_SIXLOWPAN_CTX
 #ifdef MODULE_GNRC_SIXLOWPAN_ND_BORDER_ROUTER

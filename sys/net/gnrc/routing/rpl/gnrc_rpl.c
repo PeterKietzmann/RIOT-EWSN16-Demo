@@ -66,6 +66,7 @@ uint8_t do_trail = 1; // trail: enables / disables trail on startup
 uint8_t attacker = 0; // trail: enables / disables attacker mode on startup
 uint16_t attacker_rank = 0; // trail: rank of the attacker -> is constant
 uint16_t ignore_root_addr = 0;
+uint16_t skip_node = 0;
 
 uint8_t attacker_dodag = 0; // trail
 uint16_t attacker_dodag_rank = 0; // trail
@@ -177,6 +178,39 @@ void change_rank(uint16_t new_rank)
 void ignore_root(uint16_t root_addr)
 {
     ignore_root_addr = root_addr;
+}
+
+void ignore_node(uint16_t ign)
+{
+	printf("ignore node: 0x%x (%d)\n", ign, ign);
+	skip_node = ign;
+}
+
+void perform_trail(uint8_t do_it)
+{
+	(do_it==0)?puts("TRAIL enabled\n"):puts("TRAIL disabled\n");
+	do_trail = do_it;
+}
+
+ void perform_attack(uint8_t do_t, uint16_t rank)
+ {
+	attacker_dodag = (rank==0)?0:1;
+	attacker_dodag_rank = rank;
+ }
+
+void rpl_set_attacker(uint16_t rank){
+	attacker_dodag = 1;
+	attacker_dodag_rank = rank;
+}
+
+/**
+ * @brief enable Attacker using the specified rank
+ */
+void start_as_attacker(uint16_t rank){
+	attacker = 1;
+	attacker_rank = rank;
+	rpl_set_attacker(rank);
+	printf("Attacker enabled with rank %u\n",rank);
 }
 
 
@@ -295,28 +329,7 @@ struct rpl_tvo_t * rpl_tvo_auto_init(struct rpl_tvo_t * tvo, uint8_t instance, u
     return tvo;
 }
 
-/**
- * @brief set if TRAIL autostarts
- */
-void start_with_trail(void){
-    do_trail = 1;
-    printf("TRAIL enabled\n");
-}
 
-void rpl_set_attacker(uint16_t rank){
-	attacker_dodag = 1;
-	attacker_dodag_rank = rank;
-}
-
-/**
- * @brief enable Attacker using the specified rank
- */
-void start_as_attacker(uint16_t rank){
-	attacker = 1;
-	attacker_rank = rank;
-	rpl_set_attacker(rank);
-	printf("Attacker enabled with rank %u\n",rank);
-}
 
 /**
  * @brief handle received TVO-ACK
@@ -919,7 +932,6 @@ void recv_rpl_tvo_ack(struct rpl_tvo_ack_t* tvo_ack, ipv6_addr_t *srcaddr)
 
 
 
-
 kernel_pid_t gnrc_rpl_init(kernel_pid_t if_pid)
 {
     /* check if RPL was initialized before */
@@ -1005,6 +1017,10 @@ static void _receive(gnrc_pktsnip_t *icmpv6)
     assert(ipv6 != NULL);
 
     ipv6_hdr = (ipv6_hdr_t *)ipv6->data;
+
+if(byteorder_ntohs(ipv6_hdr->src.u16[7]) == skip_node) {
+	return;
+}
 
     icmpv6_hdr = (icmpv6_hdr_t *)icmpv6->data;
     switch (icmpv6_hdr->code) {
