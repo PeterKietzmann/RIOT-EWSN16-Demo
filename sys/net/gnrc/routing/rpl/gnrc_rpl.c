@@ -62,7 +62,7 @@ gnrc_rpl_dodag_trail_t trail_parent_buffer[RPL_MAX_PARENTS]; //trail: buffer par
 uint8_t tvo_sequence_number = 0; // trail
 //uint8_t tvo_pending = 1; // trail: defines if a verification is pending
 //uint8_t tvo_parent_verified = 1; // trail: defines if a verification is pending
-uint8_t do_trail = 1; // trail: enables / disables trail on startup
+uint8_t do_trail = 0; // trail: enables / disables trail on startup
 uint8_t attacker = 0; // trail: enables / disables attacker mode on startup
 uint16_t attacker_rank = 0; // trail: rank of the attacker -> is constant
 uint16_t ignore_root_addr = 0;
@@ -70,6 +70,7 @@ uint16_t skip_node = 0;
 
 uint8_t attacker_dodag = 0; // trail
 uint16_t attacker_dodag_rank = 0; // trail
+ipv6_addr_t my_linklocal_address; // trail
 
 struct rpl_tvo_local_t tvo_local_buffer[TVO_LOCAL_BUFFER_LEN]; //trail
 uint8_t tvo_local_flags[TVO_LOCAL_BUFFER_LEN]; //trail
@@ -118,21 +119,28 @@ static mutex_t get_my_ipv6_address_mutex = MUTEX_INIT;
 ipv6_addr_t* get_my_ipv6_address(ipv6_addr_t* my_address)
 {
     mutex_lock(&get_my_ipv6_address_mutex);
-    kernel_pid_t iface = KERNEL_PID_UNDEF;
-    kernel_pid_t ifs[GNRC_NETIF_NUMOF];
-    size_t numof = gnrc_netif_get(ifs);
 
-    for (size_t i = 0; i < numof && i < GNRC_NETIF_NUMOF; i++) {
-        iface = ifs[i];
-    }
-    gnrc_ipv6_netif_t *entry = gnrc_ipv6_netif_get(iface);
-    for (int i = 0; i < GNRC_IPV6_NETIF_ADDR_NUMOF; i++) {
-        if (!ipv6_addr_is_unspecified(&entry->addrs[i].addr)) {
-            memcpy(my_address, &(entry->addrs[i].addr), sizeof(*my_address));
-            mutex_unlock(&get_my_ipv6_address_mutex);
-            return my_address;
+        kernel_pid_t iface = KERNEL_PID_UNDEF;
+        kernel_pid_t ifs[GNRC_NETIF_NUMOF];
+        size_t numof = gnrc_netif_get(ifs);
+
+        for (size_t i = 0; i < numof && i < GNRC_NETIF_NUMOF; i++) {
+            iface = ifs[i];
         }
-    }
+        gnrc_ipv6_netif_t *entry = gnrc_ipv6_netif_get(iface);
+        for (int i = 0; i < GNRC_IPV6_NETIF_ADDR_NUMOF; i++) {
+            //printf("\t\ti: %d, %x\n", i, byteorder_ntohs(entry->addrs[i].addr.u16[7]));
+            if (!ipv6_addr_is_unspecified(&entry->addrs[i].addr)) {
+                uint16_t test = byteorder_ntohs(entry->addrs[i].addr.u16[7]);
+                if(test != 0x1 && test != 0x1a && test != 0x2) {
+                    memcpy(my_address, &(entry->addrs[i].addr), sizeof(*my_address));
+                    mutex_unlock(&get_my_ipv6_address_mutex);
+                    return my_address;
+                }
+            }
+        }
+    
+    
     mutex_unlock(&get_my_ipv6_address_mutex);
     return NULL;
 }
@@ -188,12 +196,13 @@ void ignore_node(uint16_t ign)
 
 void perform_trail(uint8_t do_it)
 {
-	(do_it==0)?puts("TRAIL enabled\n"):puts("TRAIL disabled\n");
+	(do_it==0)?puts("TRAIL disabled\n"):puts("TRAIL enabled\n");
 	do_trail = do_it;
 }
 
- void perform_attack(uint8_t do_t, uint16_t rank)
+ void perform_attack(uint8_t do_it, uint16_t rank)
  {
+    (void)do_it;
 	attacker_dodag = (rank==0)?0:1;
 	attacker_dodag_rank = rank;
  }
@@ -638,7 +647,8 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 
 	 struct rpl_tvo_local_t *local_tvo = has_tvo_been_received(srcaddr, tvo->tvo_seq);
 
-
+        
+        
 	 if(local_tvo != NULL) // already received
 	 {
 		 /**
@@ -666,9 +676,16 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 
 	if(tvo->s_flag){ //response
 
-		printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
-
-		if(memcmp(tvo->src_addr.u8, &my_address.u8, sizeof(my_address.u8))){
+		printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+        /*
+        char addr_strX[IPV6_ADDR_MAX_STR_LEN];
+        printf("(%s).\n",
+                ipv6_addr_to_str(addr_strX, &tvo->src_addr, sizeof(addr_strX)));
+        printf("(%s).\n",
+                ipv6_addr_to_str(addr_strX, &my_linklocal_address, sizeof(addr_strX)));
+        */
+        if( ipv6_addr_equal(&tvo->src_addr, &my_linklocal_address) ){
+		//if(memcmp(tvo->src_addr.u8, &my_address.u8, sizeof(my_address.u8))){
 
 			//am I the source?
 			printf("*TVO origin* checking signature ... ");
@@ -770,10 +787,12 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
             kernel_pid_t iface_id = KERNEL_PID_UNDEF;
             size_t next_hop_size = sizeof(ipv6_addr_t);
             uint32_t next_hop_flags = 0;
+            //puts("Received tvo on way back");
             
             fib_get_next_hop(&gnrc_ipv6_fib_table, &iface_id,
                      next_hop.u8, &next_hop_size,
                      &next_hop_flags, tvo->src_addr.u8, sizeof(ipv6_addr_t), 0);
+                     //printf("Received tvo on way back. Origin is: %x (%d), next hop is: %x (%d)\n", tvo->src_addr.u8[15], tvo->src_addr.u8[15], next_hop.u8[15], next_hop.u8[15] );
 		}
 	}
 	else{
@@ -960,6 +979,24 @@ kernel_pid_t gnrc_rpl_init(kernel_pid_t if_pid)
     ipv6_addr_t all_RPL_nodes = GNRC_RPL_ALL_NODES_ADDR;
     gnrc_ipv6_netif_add_addr(if_pid, &all_RPL_nodes, IPV6_ADDR_BIT_LEN, 0);
 
+        gnrc_ipv6_netif_t *entry = gnrc_ipv6_netif_get(if_pid);
+        for (int i = 0; i < GNRC_IPV6_NETIF_ADDR_NUMOF; i++) {
+            if (!ipv6_addr_is_unspecified(&entry->addrs[i].addr)) {
+                // we want only the fe80::xxxx address and NOT the multicast ff02::1
+                if (ipv6_addr_is_link_local(&entry->addrs[i].addr)
+                && entry->addrs[i].addr.u8[0] == 0xfe) {
+                    memcpy(&my_linklocal_address, &(entry->addrs[i].addr), sizeof(my_linklocal_address));
+                    break;
+                }
+            }
+        }
+        char addr_strX[IPV6_ADDR_MAX_STR_LEN];
+        printf("RPL I am: (%s); uint8_t: %d; uint16_t: %d\n",
+                ipv6_addr_to_str(addr_strX, &my_linklocal_address, sizeof(addr_strX)),
+                my_linklocal_address.u8[15],
+                byteorder_ntohs(my_linklocal_address.u16[7])
+                );
+
     gnrc_rpl_send_DIS(NULL, &all_RPL_nodes);
     
     tvo_delay_over_pid = thread_create(tvo_delay_over_buf, TVO_DELAY_STACKSIZE,
@@ -1019,6 +1056,8 @@ static void _receive(gnrc_pktsnip_t *icmpv6)
     ipv6_hdr = (ipv6_hdr_t *)ipv6->data;
 
 if(byteorder_ntohs(ipv6_hdr->src.u16[7]) == skip_node) {
+    puts("Skipping received message! [Ignoring node]");
+    gnrc_pktbuf_release(icmpv6);
 	return;
 }
 

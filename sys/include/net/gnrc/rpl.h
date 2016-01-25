@@ -493,6 +493,8 @@ extern uint8_t do_trail;
 extern uint8_t attacker_dodag; // trail
 extern uint16_t attacker_dodag_rank; // trail
 
+extern ipv6_addr_t my_linklocal_address;
+
 struct rpl_tvo_t * rpl_tvo_auto_init(struct rpl_tvo_t * tvo, uint8_t instance, uint8_t version_number);
 void save_tvo_locally(struct rpl_tvo_local_t * tvo_copy);
 void resend_tvos(void);
@@ -514,7 +516,7 @@ uint8_t is_parent_verified(ipv6_addr_t * src_addr, uint16_t dio_rank); //trail
 
 void ignore_node(uint16_t ign);
 void perform_trail(uint8_t do_it);
-void perform_attack(uint8_t do_t, uint16_t rank);
+void perform_attack(uint8_t do_it, uint16_t rank);
  
 
 #ifdef __cplusplus

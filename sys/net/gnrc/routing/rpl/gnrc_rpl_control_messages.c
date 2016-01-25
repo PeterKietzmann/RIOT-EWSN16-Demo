@@ -571,6 +571,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
             return;
         }
         else {
+            puts("DIO received set flag_send_TVO = 1");
 			flag_send_TVO = 1;
         }
         
@@ -601,7 +602,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
 
     if(do_trail){
 		//check if node in Routing table with *that* rank
-		if((flag_send_TVO == 0) && is_parent_verified(src, byteorder_ntohs(dio->rank))){
+		if(/*(flag_send_TVO == 0) &&*/ is_parent_verified(src, byteorder_ntohs(dio->rank))){
 			//trail_index = get_parent_from_trail_buffer(&(ipv6_buf->srcaddr));
 			//set parent "verified" in trail_parent_buffer
 			//if(trail_index == 255){
@@ -610,10 +611,12 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
 			//}
 			//trail_parent_buffer[trail_index].verified = 1;
 			//trail_parent_buffer[trail_index].pending = 0;
+            puts("DIO received parent is verified set flag_send_TVO = 0");
 			flag_send_TVO = 0;
 		} else {
 			trail_index = get_parent_from_trail_buffer(src);
 			if(trail_index == 255){
+                
 				//parent not in buffer
 				// -> not waiting for TVO: send new TVO!
 				trail_index = include_parent_into_trail_buffer();
@@ -622,6 +625,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
 					printf("ERROR: trail buffer is full ... \n");
 					return;
 				}
+                puts("DIO received parent is NOT in trail_buffer set flag_send_TVO = 1");
 				flag_send_TVO = 1;
 				//trail_parent_buffer[trail_index].verified = 0;
 				//trail_parent_buffer[trail_index].pending = 1;
@@ -631,12 +635,17 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
 
 				//parent possibly chose different rank
 				if(byteorder_ntohs(dio->rank) != trail_parent_buffer[trail_index].parent_rank){
+                    puts("DIO received parent is NOT in trail_buffer set flag_send_TVO = 1");
 					//re-schedule TVO
 					flag_send_TVO = 1;
 				}
 				else {
 					// parent in buffer: waiting for tvo: don't send new one.
 					printf("still waiting for verification... ignoring DIO \n");
+                    if(trail_parent_buffer[trail_index].in_progress++ > 2) {
+                        flag_send_TVO = 1;
+                    }
+                    printf("DIO received parent is NOT in trail_buffer flag_send_TVO is set to: %d -> returning\n", flag_send_TVO);
 					//send_tvo = 0;
 					return;
 				}
@@ -676,7 +685,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
         return;
     }
 
-    if( !do_trail || (flag_send_TVO == 0)) {
+    if( !do_trail || (do_trail && (flag_send_TVO == 0)) ) {
         // if TRAIL should NOT be used or the parent and its rank is already verified
         gnrc_rpl_parent_t *parent = NULL;
 
