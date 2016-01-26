@@ -305,20 +305,25 @@ static gnrc_rpl_parent_t *_gnrc_rpl_find_preferred_parent(gnrc_rpl_dodag_t *doda
         dodag->my_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
     } 
     else {
-       dodag->my_rank = attacker_dodag_rank; 
+       dodag->my_rank = attacker_dodag_rank;
+       attacker_dodag_honest_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
     }
         
     if (dodag->my_rank != old_rank) {
         trickle_reset_timer(&dodag->trickle);
     }
-
+    
+    // we MUST keep a parent to not loose the instance/DODAG
+    uint16_t my_rank = (attacker_dodag == 0)?(dodag->my_rank):attacker_dodag_honest_rank;
+    
     elt = NULL; tmp = NULL;
     LL_FOREACH_SAFE(dodag->parents, elt, tmp) {
-        if (DAGRANK(dodag->my_rank, dodag->instance->min_hop_rank_inc)
+        if (DAGRANK(my_rank, dodag->instance->min_hop_rank_inc)
             <= DAGRANK(elt->rank, dodag->instance->min_hop_rank_inc)) {
             gnrc_rpl_parent_remove(elt);
         }
     }
+
 
     return dodag->parents;
 }

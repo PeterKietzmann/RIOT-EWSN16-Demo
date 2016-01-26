@@ -486,12 +486,13 @@ uint8_t gnrc_rpl_gen_instance_id(bool local);
 
 // helper
 #define RPL_MAX_PARENTS (3) // <- default value
-ipv6_addr_t* _get_my_ipv6_address(ipv6_addr_t* my_address);
+//ipv6_addr_t* _get_my_ipv6_address(ipv6_addr_t* my_address);
 extern uint16_t skip_node;
 extern gnrc_rpl_dodag_trail_t trail_parent_buffer[RPL_MAX_PARENTS];
 extern uint8_t do_trail;
 extern uint8_t attacker_dodag; // trail
 extern uint16_t attacker_dodag_rank; // trail
+extern uint16_t attacker_dodag_honest_rank; // trail to keep a parent
 
 extern ipv6_addr_t my_linklocal_address;
 

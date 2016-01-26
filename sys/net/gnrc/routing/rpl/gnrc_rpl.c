@@ -70,6 +70,7 @@ uint16_t skip_node = 0;
 
 uint8_t attacker_dodag = 0; // trail
 uint16_t attacker_dodag_rank = 0; // trail
+uint16_t attacker_dodag_honest_rank = GNRC_RPL_INFINITE_RANK;
 ipv6_addr_t my_linklocal_address; // trail
 
 struct rpl_tvo_local_t tvo_local_buffer[TVO_LOCAL_BUFFER_LEN]; //trail
@@ -112,39 +113,6 @@ static gnrc_rpl_dodag_t* rpl_get_my_dodag(void)
     return NULL;
 }
 
-static mutex_t get_my_ipv6_address_mutex = MUTEX_INIT;
-/**
- * @return the IPv6 address for this node on the first available interface
- */
-ipv6_addr_t* _get_my_ipv6_address(ipv6_addr_t* my_address)
-{
-    mutex_lock(&get_my_ipv6_address_mutex);
-
-        kernel_pid_t iface = KERNEL_PID_UNDEF;
-        kernel_pid_t ifs[GNRC_NETIF_NUMOF];
-        size_t numof = gnrc_netif_get(ifs);
-
-        for (size_t i = 0; i < numof && i < GNRC_NETIF_NUMOF; i++) {
-            iface = ifs[i];
-        }
-        gnrc_ipv6_netif_t *entry = gnrc_ipv6_netif_get(iface);
-        for (int i = 0; i < GNRC_IPV6_NETIF_ADDR_NUMOF; i++) {
-            //printf("\t\ti: %d, %x\n", i, byteorder_ntohs(entry->addrs[i].addr.u16[7]));
-            if (!ipv6_addr_is_unspecified(&entry->addrs[i].addr)) {
-                uint16_t test = byteorder_ntohs(entry->addrs[i].addr.u16[7]);
-                if(test != 0x1 && test != 0x1a && test != 0x2) {
-                    memcpy(my_address, &(entry->addrs[i].addr), sizeof(*my_address));
-                    mutex_unlock(&get_my_ipv6_address_mutex);
-                    return my_address;
-                }
-            }
-        }
-    
-    
-    mutex_unlock(&get_my_ipv6_address_mutex);
-    return NULL;
-}
-
 static mutex_t rpl_find_parent_mutex = MUTEX_INIT;
 /**
  * @return the parent matching the given IPv6 address
@@ -173,55 +141,45 @@ void change_rank(uint16_t new_rank)
     mydodag = rpl_get_my_dodag();
 
     if (mydodag != NULL) {
+        uint16_t old_rank = mydodag->my_rank; 
         mydodag->my_rank = new_rank;
-        //mydodag->min_rank = new_rank;
-        printf("Calculated rank to %u (manually reset rank)\n" , mydodag->my_rank);
+        printf("Change rank: old rank: %u, manually set rank: %u\n" , old_rank, mydodag->my_rank);
     }
     puts("ERROR: no DODAG available to set rank");
 }
 
 /**
- * @brief ignore the RPL root address, identified using the last 2 bytes
+ * @brief ignore the given node identified using the last 2 IPv6 address bytes
  */
-void ignore_root(uint16_t root_addr)
-{
-    ignore_root_addr = root_addr;
-}
-
 void ignore_node(uint16_t ign)
 {
-	printf("ignore node: 0x%x (%d)\n", ign, ign);
-	skip_node = ign;
+    printf("ignore node: 0x%x (%d)\n", ign, ign);
+    skip_node = ign;
 }
 
+/**
+ * @brief enable or disable TRAIL
+ */
 void perform_trail(uint8_t do_it)
 {
-	(do_it==0)?puts("TRAIL disabled\n"):puts("TRAIL enabled\n");
-	do_trail = do_it;
-}
-
- void perform_attack(uint8_t do_it, uint16_t rank)
- {
-    (void)do_it;
-	attacker_dodag = (rank==0)?0:1;
-	attacker_dodag_rank = rank;
- }
-
-void rpl_set_attacker(uint16_t rank){
-	attacker_dodag = 1;
-	attacker_dodag_rank = rank;
+    (do_it==0)?puts("TRAIL disabled\n"):puts("TRAIL enabled\n");
+    do_trail = do_it;
 }
 
 /**
  * @brief enable Attacker using the specified rank
+ *        setting the rank to 0 disables the attack
  */
-void start_as_attacker(uint16_t rank){
-	attacker = 1;
-	attacker_rank = rank;
-	rpl_set_attacker(rank);
-	printf("Attacker enabled with rank %u\n",rank);
+void perform_attack(uint8_t do_it, uint16_t rank)
+{
+    (void)do_it;
+    printf("Set manual rank manually to: %u\n", rank);
+    attacker_dodag = (rank==0)?0:1;
+    attacker_dodag_rank = rank;
+    if( attacker_dodag == 1) {
+        puts("I ATTACK NOW");
+    }
 }
-
 
 //trail
 void* tvo_delay_over(void* args){
