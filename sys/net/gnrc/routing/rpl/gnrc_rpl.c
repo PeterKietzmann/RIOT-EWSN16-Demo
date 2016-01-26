@@ -116,7 +116,7 @@ static mutex_t get_my_ipv6_address_mutex = MUTEX_INIT;
 /**
  * @return the IPv6 address for this node on the first available interface
  */
-ipv6_addr_t* get_my_ipv6_address(ipv6_addr_t* my_address)
+ipv6_addr_t* _get_my_ipv6_address(ipv6_addr_t* my_address)
 {
     mutex_lock(&get_my_ipv6_address_mutex);
 
@@ -291,11 +291,15 @@ void delay_tvo(uint32_t seconds){
  */
 struct rpl_tvo_t * rpl_tvo_manual_init(struct rpl_tvo_t * tvo)
 {
+    /*
     ipv6_addr_t my_address;
     if ( get_my_ipv6_address(&my_address) == NULL ) {
         return NULL;
     }
-
+*/
+if ( ipv6_addr_is_unspecified(&my_linklocal_address) ) {
+    return NULL;
+}
 
    // gnrc_rpl_dodag_t *my_dodag = rpl_get_my_dodag();
 
@@ -303,7 +307,7 @@ struct rpl_tvo_t * rpl_tvo_manual_init(struct rpl_tvo_t * tvo)
     tvo->rank = 0;
     tvo->rpl_instanceid = 99;//my_dodag->instance->id;
     tvo->s_flag = 0;
-    tvo->src_addr = my_address;
+    tvo->src_addr = my_linklocal_address;
     //TODO uncomment for source routing
 //	tvo->srh_list[0].addr = my_address;
 //	tvo->srh_list_size = 1;
@@ -318,11 +322,15 @@ struct rpl_tvo_t * rpl_tvo_manual_init(struct rpl_tvo_t * tvo)
  */
 struct rpl_tvo_t * rpl_tvo_auto_init(struct rpl_tvo_t * tvo, uint8_t instance, uint8_t version_number)
 {
-
+/*
     ipv6_addr_t my_address;
     if ( get_my_ipv6_address(&my_address) == NULL ) {
         return NULL;
     }
+*/
+if ( ipv6_addr_is_unspecified(&my_linklocal_address) ) {
+    return NULL;
+}
 
     tvo->nonce = xtimer_now();
 
@@ -330,7 +338,7 @@ struct rpl_tvo_t * rpl_tvo_auto_init(struct rpl_tvo_t * tvo, uint8_t instance, u
     tvo->rpl_instanceid = instance;
 
     tvo->s_flag = 0;
-    tvo->src_addr = my_address;
+    tvo->src_addr = my_linklocal_address;
 
     tvo->tvo_seq = tvo_sequence_number;
     tvo_sequence_number++;
@@ -413,10 +421,10 @@ void save_tvo_locally(struct rpl_tvo_local_t * tvo_copy)
  */
 void reset_tvo_timer(void)
 {
-    ipv6_addr_t my_address;
+    //ipv6_addr_t my_address;
 
-    if ( get_my_ipv6_address(&my_address) != NULL ) {
-        printf("**Node %u: Resetting all TRAIL parents -> accepting all incoming DIOs\n**",my_address.u8[15]);
+    if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
+        printf("**Node %u: Resetting all TRAIL parents -> accepting all incoming DIOs\n**",my_linklocal_address.u8[15]);
     } else {
         printf("**Node (UNKNOWN): Resetting all TRAIL parents -> accepting all incoming DIOs\n**");
     }
@@ -577,9 +585,9 @@ void send_TVO_ACK(ipv6_addr_t *destination, uint8_t sequence_number)
 {
     struct rpl_tvo_ack_t *tvo_ack;
     
-    ipv6_addr_t my_address;
-    if ( get_my_ipv6_address(&my_address) != NULL ) {
-        printf("m: ID %u send msg TVO_ACK to ID %u #color3 - Seq. %u\n", my_address.u8[15],destination->u8[15], sequence_number);
+    //ipv6_addr_t my_address;
+    if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
+        printf("m: ID %u send msg TVO_ACK to ID %u #color3 - Seq. %u\n", my_linklocal_address.u8[15],destination->u8[15], sequence_number);
     }
     else {
         printf("m: ID (UNKNOWN) send msg TVO_ACK to ID %u #color3 - Seq. %u\n", destination->u8[15], sequence_number);
@@ -635,10 +643,10 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 
 	//send_TVO_ACK(&(ipv6_buf->srcaddr), rpl_tvo_buf->tvo_seq);
     rpl_tvo_signature_t *signature = NULL;
-    ipv6_addr_t my_address;
+    //ipv6_addr_t my_address;
     ipv6_addr_t next_hop;
 
-	memset(my_address.u8, 0, sizeof(&my_address));
+	//memset(my_address.u8, 0, sizeof(&my_address));
 	memset(next_hop.u8, 0, sizeof(&next_hop));
 
 	if (tvo->s_flag) {
@@ -661,8 +669,8 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 		  *  "sollte die TVO noch acken" zu tun.
 		  */
 		// printf("\n Already received TVO (seq: %u) from %s\n", rpl_tvo_buf->tvo_seq, ipv6_addr_to_str(addr_str, &(ipv6_buf->srcaddr)));
-        if ( get_my_ipv6_address(&my_address) != NULL ) {
-            printf("m: ID %u received msg TVO from ID %u #color10 - Seq. %u\n", my_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+        if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
+            printf("m: ID %u received msg TVO from ID %u #color10 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
         }
         else {
             printf("m: ID (UNKNOWN) received msg TVO from ID %u #color10 - Seq. %u\n", srcaddr->u8[15], tvo->tvo_seq);
@@ -799,7 +807,7 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 		/*
 		 * received tvo on way to root
 		 */
-		printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+		printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
         my_dodag = rpl_get_my_dodag();
 		//TVO is a request: on the way to the root
 		if(my_dodag == NULL){
@@ -927,9 +935,9 @@ void recv_rpl_tvo_ack(struct rpl_tvo_ack_t* tvo_ack, ipv6_addr_t *srcaddr)
    // char addr_str[IPV6_MAX_ADDR_STR_LEN];
     //printf("*** received TVO-ACK (seq: %u) from %s\n", rpl_tvo_ack_buf->tvo_seq ,ipv6_addr_to_str(addr_str, &(ipv6_buf->srcaddr)));
    // printf("*** received TVO-ACK from *ID %u* (seq: %u)\n", ipv6_buf->srcaddr.uint8[15], rpl_tvo_ack_buf->tvo_seq);
-   ipv6_addr_t my_address;
-    if ( get_my_ipv6_address(&my_address) != NULL ) {
-        printf("m: ID %u received msg TVO_ACK from ID %u #color11 - Seq. %u\n", my_address.u8[15],  srcaddr->u8[15], tvo_ack->tvo_seq);
+   //ipv6_addr_t my_address;
+    if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
+        printf("m: ID %u received msg TVO_ACK from ID %u #color11 - Seq. %u\n", my_linklocal_address.u8[15],  srcaddr->u8[15], tvo_ack->tvo_seq);
     }
     else {
         printf("m: ID (UNKNOWN) received msg TVO_ACK from ID %u #color11 - Seq. %u\n", srcaddr->u8[15], tvo_ack->tvo_seq);

@@ -510,8 +510,8 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
     //uint16_t myRank = 0;
     uint8_t trail_index = 0;
     uint8_t flag_send_TVO = 0;
-    ipv6_addr_t my_address;
-    get_my_ipv6_address(&my_address);
+    //ipv6_addr_t my_address;
+    //get_my_ipv6_address(&my_address);
 
     if (gnrc_rpl_instance_add(dio->instance_id, &inst)) {
         /* new instance and DODAG */
@@ -593,12 +593,12 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
         }
 
         if (byteorder_ntohs(dio->rank) >= dodag->my_rank) {
-            printf("m: ID %u received msg DIO from ID %u #color7 - Rank %u\n", my_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
+            printf("m: ID %u received msg DIO from ID %u #color7 - Rank %u\n", my_linklocal_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
             return;
         }
     }
 
-    printf("m: ID %u received msg DIO from ID %u #color6  - Rank %u\n", my_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
+    printf("m: ID %u received msg DIO from ID %u #color6  - Rank %u\n", my_linklocal_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
 
     if(do_trail){
 		//check if node in Routing table with *that* rank
