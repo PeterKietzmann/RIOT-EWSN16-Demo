@@ -65,8 +65,6 @@ uint8_t tvo_sequence_number = 0; // trail
 uint8_t do_trail = 0; // trail: enables / disables trail on startup
 uint8_t attacker = 0; // trail: enables / disables attacker mode on startup
 uint16_t attacker_rank = 0; // trail: rank of the attacker -> is constant
-uint16_t ignore_root_addr = 0;
-uint16_t skip_node = 0;
 
 uint8_t attacker_dodag = 0; // trail
 uint16_t attacker_dodag_rank = 0; // trail
@@ -146,15 +144,6 @@ void change_rank(uint16_t new_rank)
         printf("Change rank: old rank: %u, manually set rank: %u\n" , old_rank, mydodag->my_rank);
     }
     puts("ERROR: no DODAG available to set rank");
-}
-
-/**
- * @brief ignore the given node identified using the last 2 IPv6 address bytes
- */
-void ignore_node(uint16_t ign)
-{
-    printf("ignore node: 0x%x (%d)\n", ign, ign);
-    skip_node = ign;
 }
 
 /**
@@ -1020,12 +1009,6 @@ static void _receive(gnrc_pktsnip_t *icmpv6)
     assert(ipv6 != NULL);
 
     ipv6_hdr = (ipv6_hdr_t *)ipv6->data;
-
-if(byteorder_ntohs(ipv6_hdr->src.u16[7]) == skip_node) {
-    puts("Skipping received message! [Ignoring node]");
-    gnrc_pktbuf_release(icmpv6);
-	return;
-}
 
     icmpv6_hdr = (icmpv6_hdr_t *)icmpv6->data;
     switch (icmpv6_hdr->code) {

@@ -201,9 +201,6 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_GNRC_RPL
     {"rpl", "rpl configuration tool [help|init|rm|root|show]", _gnrc_rpl },
-    { "trail", "activate TRAIL", start_trail },
-    { "ignore", "ignore node TRAIL", ignr },
-    { "attack", "start attack with given rank TRAIL", attack },
 #endif
 #ifdef MODULE_GNRC_SIXLOWPAN_CTX
 #ifdef MODULE_GNRC_SIXLOWPAN_ND_BORDER_ROUTER

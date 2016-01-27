@@ -487,7 +487,6 @@ uint8_t gnrc_rpl_gen_instance_id(bool local);
 // helper
 #define RPL_MAX_PARENTS (3) // <- default value
 //ipv6_addr_t* _get_my_ipv6_address(ipv6_addr_t* my_address);
-extern uint16_t skip_node;
 extern gnrc_rpl_dodag_trail_t trail_parent_buffer[RPL_MAX_PARENTS];
 extern uint8_t do_trail;
 extern uint8_t attacker_dodag; // trail
@@ -515,7 +514,6 @@ uint8_t include_parent_into_trail_buffer(void); //trail
 uint8_t get_parent_from_trail_buffer(ipv6_addr_t * src_addr); // trail
 uint8_t is_parent_verified(ipv6_addr_t * src_addr, uint16_t dio_rank); //trail
 
-void ignore_node(uint16_t ign);
 void perform_trail(uint8_t do_it);
 void perform_attack(uint8_t do_it, uint16_t rank);
  

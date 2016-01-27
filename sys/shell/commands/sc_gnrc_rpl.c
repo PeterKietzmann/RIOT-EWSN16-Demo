@@ -298,36 +298,6 @@ int _gnrc_rpl(int argc, char **argv)
     return 0;
 }
 
-int start_trail(int argc, char **argv)
-{
-	if ((argc > 1) && (strcmp("0", argv[1]) == 0)) {
-		perform_trail(0);
-		return 0;	
-	}
-	
-	perform_trail(1);
-	return 0;
-}
-
-int ignr(int argc, char **argv)
-{	
-	if (argc > 1) {
-		int ign = atoi(argv[1]);
-		ignore_node( (uint16_t)ign);
-	}
-	return 0;
-}
-
-int attack(int argc, char **argv)
-{	
-	if (argc > 2) {
-		int do_it = atoi(argv[1]);
-		int rank = atoi(argv[2]);
-		perform_attack( (uint8_t)do_it, (uint16_t)(rank));
-	}
-	return 0;
-}
-
 /**
  * @}
  */
