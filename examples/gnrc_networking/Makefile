@@ -29,6 +29,7 @@ USEMODULE += gnrc_icmpv6_echo
 USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
+USEMODULE += gnrc_ipv6_blacklist
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
