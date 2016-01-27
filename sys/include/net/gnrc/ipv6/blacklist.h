@@ -16,7 +16,7 @@
  * @brief   IPv6 blacklist definitions
  *
  * @author  Martine Lenders <mlenders@inf.fu-berlin.de>
- * @author  Martin landsmann <martin.landsmann@haw-hamburg.de>
+ * @author  Martin Landsmann <martin.landsmann@haw-hamburg.de>
  */
 #ifndef GNRC_IPV6_BLACKLIST_H_
 #define GNRC_IPV6_BLACKLIST_H_

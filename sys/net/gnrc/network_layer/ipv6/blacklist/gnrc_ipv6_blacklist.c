@@ -11,7 +11,7 @@
  *
  * @file
  * @author Martine Lenders <mlenders@inf.fu-berlin.de>
- * @author Martin landsmann <martin.landsmann@haw-hamburg.de>
+ * @author Martin Landsmann <martin.landsmann@haw-hamburg.de>
  */
 
 #include "bitfield.h"
