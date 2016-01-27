@@ -815,7 +815,7 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 
 		//rank OK, NOT tested -> continue
 		// am I root?
-		if(my_dodag->my_rank == GNRC_RPL_ROOT_RANK){
+		if((my_dodag->my_rank == GNRC_RPL_ROOT_RANK) && (attacker_dodag == 0)){
 			//rpl_tvo_signature_buf = get_tvo_signature_buf(TVO_BASE_LEN);
 			//memset(rpl_tvo_signature_buf, 0, sizeof(*rpl_tvo_signature_buf));
             rpl_tvo_signature_t sig_mem;
