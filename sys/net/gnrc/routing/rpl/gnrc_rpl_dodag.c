@@ -287,7 +287,7 @@ static gnrc_rpl_parent_t *_gnrc_rpl_find_preferred_parent(gnrc_rpl_dodag_t *doda
         }
         fib_remove_entry(&gnrc_ipv6_fib_table, def.u8, sizeof(ipv6_addr_t));
         ipv6_addr_t all_RPL_nodes = GNRC_RPL_ALL_NODES_ADDR;
-
+        //printf("p_d: ID %u del par %u\n", old_best->addr.u8[15], my_linklocal_address.u8[15]);
         kernel_pid_t if_id = gnrc_ipv6_netif_find_by_addr(NULL, &all_RPL_nodes);
 
         if (if_id == KERNEL_PID_UNDEF) {
@@ -295,11 +295,14 @@ static gnrc_rpl_parent_t *_gnrc_rpl_find_preferred_parent(gnrc_rpl_dodag_t *doda
             return NULL;
         }
 
+        //printf("p_s: ID %u add par %u\n", new_best->addr.u8[15], my_linklocal_address.u8[15]);
         fib_add_entry(&gnrc_ipv6_fib_table, if_id, def.u8, sizeof(ipv6_addr_t),
                       (FIB_FLAG_NET_PREFIX | 0x0), dodag->parents->addr.u8, sizeof(ipv6_addr_t),
                       FIB_FLAG_RPL_ROUTE, (dodag->default_lifetime * dodag->lifetime_unit)
                       * SEC_IN_MS);
     }
+printf("p_d: ID %u del par %u\n", my_linklocal_address.u8[15], old_best->addr.u8[15]);
+printf("p_s: ID %u add par %u\n", my_linklocal_address.u8[15], new_best->addr.u8[15]);
 
     if (attacker_dodag == 0) {
         dodag->my_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
