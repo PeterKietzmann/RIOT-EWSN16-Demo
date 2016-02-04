@@ -196,6 +196,7 @@ bool gnrc_rpl_parent_remove(gnrc_rpl_parent_t *parent)
         ipv6_addr_t def = IPV6_ADDR_UNSPECIFIED;
         fib_remove_entry(&gnrc_ipv6_fib_table, def.u8, sizeof(ipv6_addr_t));
     }
+    printf("p_d: ID %u del par %u\n", my_linklocal_address.u8[15], parent->addr.u8[15]);
     LL_DELETE(parent->dodag->parents, parent);
     memset(parent, 0, sizeof(gnrc_rpl_parent_t));
     return true;
@@ -275,6 +276,7 @@ static gnrc_rpl_parent_t *_gnrc_rpl_find_preferred_parent(gnrc_rpl_dodag_t *doda
     }
 
     if (new_best->rank == GNRC_RPL_INFINITE_RANK) {
+        printf("p_d: ID %u del par %u\n", my_linklocal_address.u8[15], old_best->addr.u8[15]);
         return NULL;
     }
 
