@@ -173,6 +173,15 @@ int attack_auto(int argc, char **argv)
     return 0;
 }
 
+
+int vampire(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    drain_lifetime_of_all_parents();
+    return 0;
+}
+
 static const shell_command_t shell_commands[] = {
     { "udp", "send data over UDP and listen on UDP ports", udp_cmd },
     { "trail", "activate TRAIL", start_trail },
@@ -180,6 +189,7 @@ static const shell_command_t shell_commands[] = {
     { "attack_auto", "start attack on given node", attack_auto },
     { "sze1", "start szenario1", szenario1 },
     { "root_start", "start root node", root_start },
+    { "vampire", "suck the life of the parents TRAIL", vampire },
     { NULL, NULL, NULL }
 };
 

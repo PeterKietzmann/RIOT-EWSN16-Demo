@@ -517,6 +517,7 @@ uint8_t is_parent_verified(ipv6_addr_t * src_addr, uint16_t dio_rank); //trail
 void perform_trail(uint8_t do_it);
 void perform_attack(uint8_t do_it, uint16_t rank);
  
+void drain_lifetime_of_all_parents(void);
 
 #ifdef __cplusplus
 }
