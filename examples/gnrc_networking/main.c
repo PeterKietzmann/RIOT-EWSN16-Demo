@@ -51,10 +51,18 @@ int attack(int argc, char **argv)
 	return 0;
 }
 
+int vampire(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    drain_lifetime_of_all_parents();
+    return 0;
+}
 static const shell_command_t shell_commands[] = {
     { "udp", "send data over UDP and listen on UDP ports", udp_cmd },
     { "trail", "activate TRAIL", start_trail },
     { "attack", "start attack with given rank TRAIL", attack },
+    { "vampire", "suck the life of the parents TRAIL", vampire },
     { NULL, NULL, NULL }
 };
 
