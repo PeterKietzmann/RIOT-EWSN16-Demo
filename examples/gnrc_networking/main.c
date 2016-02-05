@@ -51,18 +51,42 @@ int attack(int argc, char **argv)
 	return 0;
 }
 
-int vampire(int argc, char **argv)
+int tabula_rasa(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
     drain_lifetime_of_all_parents();
     return 0;
 }
+
+int vampire(int argc, char **argv)
+{
+    char ipv6_addr[IPV6_ADDR_MAX_STR_LEN];
+    
+    ipv6_addr_t addr;
+    if( argc < 2 ) {
+        puts("missing <addr> parameter!");
+        return 1;
+    }
+    
+    if (ipv6_addr_from_str(&addr, argv[1]) == NULL) {
+        puts("error: unable to parse IPv6 address.");
+        return 1;
+    }
+    
+    ipv6_addr_to_str(ipv6_addr, &addr, IPV6_ADDR_MAX_STR_LEN);
+    printf("drain life from: %s\n", ipv6_addr);
+                
+    drain_lifetime_of_parent(&addr);
+    return 0;
+}
+
 static const shell_command_t shell_commands[] = {
     { "udp", "send data over UDP and listen on UDP ports", udp_cmd },
     { "trail", "activate TRAIL", start_trail },
     { "attack", "start attack with given rank TRAIL", attack },
-    { "vampire", "suck the life of the parents TRAIL", vampire },
+    { "tabula_rasa", "suck the life of all parents TRAIL", tabula_rasa },
+    { "vampire", "<addr> suck the life of one parent TRAIL", vampire },
     { NULL, NULL, NULL }
 };
 

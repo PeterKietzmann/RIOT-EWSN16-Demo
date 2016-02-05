@@ -518,6 +518,7 @@ void perform_trail(uint8_t do_it);
 void perform_attack(uint8_t do_it, uint16_t rank);
  
 void drain_lifetime_of_all_parents(void);
+void drain_lifetime_of_parent(ipv6_addr_t* addr);
 
 #ifdef __cplusplus
 }
