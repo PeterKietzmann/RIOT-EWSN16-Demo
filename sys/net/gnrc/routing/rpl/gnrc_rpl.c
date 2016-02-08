@@ -124,6 +124,22 @@ void drain_lifetime_of_all_parents(void)
     }
 }
 
+void drain_lifetime_of_parent(ipv6_addr_t* addr)
+{
+    gnrc_rpl_dodag_t* dodag =  rpl_get_my_dodag();
+    if(dodag != NULL) {
+        gnrc_rpl_parent_t *elt, *tmp;
+        LL_FOREACH_SAFE(dodag->parents, elt, tmp) {
+            if (ipv6_addr_equal(&(elt->addr), addr) == (sizeof(*addr)<<3) ) {
+                elt->lifetime = elt->lifetime >> 2;
+                return;
+            }
+        }
+    } else {
+        puts("No DODAG found to drain the lifetimes!");
+    }
+}
+
 static mutex_t rpl_find_parent_mutex = MUTEX_INIT;
 /**
  * @return the parent matching the given IPv6 address
