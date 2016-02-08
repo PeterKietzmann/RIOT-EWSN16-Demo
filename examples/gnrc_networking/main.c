@@ -45,16 +45,6 @@ int start_trail(int argc, char **argv)
 	return 0;
 }
 
-int attack(int argc, char **argv)
-{	
-	if (argc > 2) {
-		int do_it = atoi(argv[1]);
-		int rank = atoi(argv[2]);
-		perform_attack( (uint8_t)do_it, (uint16_t)(rank));
-	}
-	return 0;
-}
-
 /*
 fe80::585a:6667:bdbf:3702
 fe80::5855:5477:ade:6a42
@@ -153,6 +143,37 @@ int root_start(int argc, char **argv)
     return 0;
 }
 
+int attack(int argc, char **argv)
+{
+    //char ipv6_addr[IPV6_ADDR_MAX_STR_LEN];
+    
+    ipv6_addr_t addr;
+    if( argc < 2 ) {
+        puts("missing <addr> parameter!");
+        return 1;
+    }
+
+    if (ipv6_addr_from_str(&addr, argv[1]) == NULL) {
+        puts("error: unable to parse IPv6 address.");
+        return 1;
+    }
+
+    if ( ipv6_addr_equal(&addr, &my_linklocal_address) ) {
+        if ( argc > 2 ) {
+            int rank = atoi(argv[2]);
+            perform_attack( (uint8_t)1, (uint16_t)(rank));
+	} 
+        else {
+            perform_attack( (uint8_t)1, 300);
+        }
+    }
+    else {
+        puts("I'm Honest.");
+    }
+
+    return 0;
+}
+
 int attack_auto(int argc, char **argv)
 {
     uint16_t me_is = byteorder_ntohs(my_linklocal_address.u16[7]);
@@ -208,8 +229,8 @@ int vampire(int argc, char **argv)
 static const shell_command_t shell_commands[] = {
     { "udp", "send data over UDP and listen on UDP ports", udp_cmd },
     { "trail", "activate TRAIL", start_trail },
-    { "attack", "start attack with given rank TRAIL", attack },
-    { "attack_auto", "start attack on given node", attack_auto },
+    { "attack", "<addr> [<rank>] start attack with given rank TRAIL", attack },
+    { "attack_auto", "[<rank>] start attack on static node", attack_auto },
     { "sze1", "start szenario1", szenario1 },
     { "root_start", "start root node", root_start },
     { "tabula_rasa", "suck the life of all parents TRAIL", tabula_rasa },

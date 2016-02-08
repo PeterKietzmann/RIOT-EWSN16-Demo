@@ -130,7 +130,7 @@ void drain_lifetime_of_parent(ipv6_addr_t* addr)
     if(dodag != NULL) {
         gnrc_rpl_parent_t *elt, *tmp;
         LL_FOREACH_SAFE(dodag->parents, elt, tmp) {
-            if (ipv6_addr_equal(&(elt->addr), addr) == (sizeof(*addr)<<3) ) {
+            if (ipv6_addr_equal(&(elt->addr), addr)) {
                 elt->lifetime = elt->lifetime >> 2;
                 return;
             }
