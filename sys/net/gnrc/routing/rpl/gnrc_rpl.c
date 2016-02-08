@@ -131,7 +131,10 @@ void drain_lifetime_of_parent(ipv6_addr_t* addr)
         gnrc_rpl_parent_t *elt, *tmp;
         LL_FOREACH_SAFE(dodag->parents, elt, tmp) {
             if (ipv6_addr_equal(&(elt->addr), addr)) {
-                elt->lifetime = elt->lifetime >> 2;
+                uint32_t now = xtimer_now();
+printf("drain lifetime form: %"PRIu32",", elt->lifetime);
+                elt->lifetime = (now / SEC_IN_USEC) + 10;
+printf("to: %"PRIu32"\n", elt->lifetime);
                 return;
             }
         }
@@ -660,7 +663,8 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 
 	if(tvo->s_flag){ //response
 
-		printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+        // TVO from root to nodes
+		//printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
         /*
         char addr_strX[IPV6_ADDR_MAX_STR_LEN];
         printf("(%s).\n",
