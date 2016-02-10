@@ -198,6 +198,7 @@ void perform_attack(uint8_t do_it, uint16_t rank)
     attacker_dodag = (rank==0)?0:1;
     attacker_dodag_rank = rank;
     if( attacker_dodag == 1) {
+        printf("att: ID %u change\n", my_linklocal_address.u8[15]);
         puts("I ATTACK NOW");
     }
 }
