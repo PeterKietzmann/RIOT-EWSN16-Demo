@@ -566,7 +566,7 @@ void send_TVO_ACK(ipv6_addr_t *destination, uint8_t sequence_number)
     
     //ipv6_addr_t my_address;
     if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
-        printf("m: ID %u send msg TVO_ACK to ID %u #color3 - Seq. %u\n", my_linklocal_address.u8[15],destination->u8[15], sequence_number);
+        //printf("m: ID %u send msg TVO_ACK to ID %u #color3 - Seq. %u\n", my_linklocal_address.u8[15],destination->u8[15], sequence_number);
     }
     else {
         printf("m: ID (UNKNOWN) send msg TVO_ACK to ID %u #color3 - Seq. %u\n", destination->u8[15], sequence_number);
@@ -649,7 +649,7 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 		  */
 		// printf("\n Already received TVO (seq: %u) from %s\n", rpl_tvo_buf->tvo_seq, ipv6_addr_to_str(addr_str, &(ipv6_buf->srcaddr)));
         if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
-            printf("m: ID %u received msg TVO from ID %u #color10 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+            //printf("m: ID %u received msg TVO from ID %u #color10 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
         }
         else {
             printf("m: ID (UNKNOWN) received msg TVO from ID %u #color10 - Seq. %u\n", srcaddr->u8[15], tvo->tvo_seq);
@@ -917,7 +917,7 @@ void recv_rpl_tvo_ack(struct rpl_tvo_ack_t* tvo_ack, ipv6_addr_t *srcaddr)
    // printf("*** received TVO-ACK from *ID %u* (seq: %u)\n", ipv6_buf->srcaddr.uint8[15], rpl_tvo_ack_buf->tvo_seq);
    //ipv6_addr_t my_address;
     if ( !ipv6_addr_is_unspecified(&my_linklocal_address) ) {
-        printf("m: ID %u received msg TVO_ACK from ID %u #color11 - Seq. %u\n", my_linklocal_address.u8[15],  srcaddr->u8[15], tvo_ack->tvo_seq);
+        //printf("m: ID %u received msg TVO_ACK from ID %u #color11 - Seq. %u\n", my_linklocal_address.u8[15],  srcaddr->u8[15], tvo_ack->tvo_seq);
     }
     else {
         printf("m: ID (UNKNOWN) received msg TVO_ACK from ID %u #color11 - Seq. %u\n", srcaddr->u8[15], tvo_ack->tvo_seq);

@@ -593,7 +593,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
         }
 
         if (byteorder_ntohs(dio->rank) >= dodag->my_rank) {
-            printf("m: ID %u received msg DIO from ID %u #color7 - Rank %u\n", my_linklocal_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
+            //printf("m: ID %u received msg DIO from ID %u #color7 - Rank %u\n", my_linklocal_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
             return;
         }
     }
