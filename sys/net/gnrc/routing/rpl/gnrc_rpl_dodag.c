@@ -304,11 +304,12 @@ static gnrc_rpl_parent_t *_gnrc_rpl_find_preferred_parent(gnrc_rpl_dodag_t *doda
                       * SEC_IN_MS);
     }
 printf("p_d: ID %u del par %u\n", my_linklocal_address.u8[15], old_best->addr.u8[15]);
-printf("p_s: ID %u add par %u\n", my_linklocal_address.u8[15], new_best->addr.u8[15]);
+//printf("p_s: ID %u add par %u\n", my_linklocal_address.u8[15], new_best->addr.u8[15]);
 
     if (attacker_dodag == 0) {
         dodag->my_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
-    } 
+        printf("p_s: ID %u add par %u\n", my_linklocal_address.u8[15], new_best->addr.u8[15]);
+    }
     else {
        dodag->my_rank = attacker_dodag_rank;
        attacker_dodag_honest_rank = dodag->instance->of->calc_rank(dodag->parents, 0);
@@ -328,7 +329,6 @@ printf("p_s: ID %u add par %u\n", my_linklocal_address.u8[15], new_best->addr.u8
             gnrc_rpl_parent_remove(elt);
         }
     }
-
 
     return dodag->parents;
 }
