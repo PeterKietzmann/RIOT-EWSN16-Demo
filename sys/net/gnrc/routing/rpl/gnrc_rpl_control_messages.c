@@ -512,6 +512,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
     uint8_t flag_send_TVO = 0;
     //ipv6_addr_t my_address;
     //get_my_ipv6_address(&my_address);
+    printf("m: ID %u received msg DIO from ID %u #color6  - Rank %u\n", my_linklocal_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
 
     if (gnrc_rpl_instance_add(dio->instance_id, &inst)) {
         /* new instance and DODAG */
@@ -572,7 +573,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
         }
         else {
             puts("DIO received set flag_send_TVO = 1");
-			flag_send_TVO = 1;
+            flag_send_TVO = 1;
         }
         
     }
@@ -598,7 +599,6 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, ipv6_addr_t *src, uint16_t len)
         }
     }
 
-    printf("m: ID %u received msg DIO from ID %u #color6  - Rank %u\n", my_linklocal_address.u8[15], src->u8[15], byteorder_ntohs(dio->rank));
 
     if(do_trail){
 		//check if node in Routing table with *that* rank
@@ -1074,6 +1074,14 @@ void gnrc_rpl_recv_DAO(gnrc_rpl_dao_t *dao, ipv6_addr_t *src, uint16_t len)
     /* send a DAO-ACK if K flag is set */
     if (dao->k_d_flags & GNRC_RPL_DAO_K_BIT) {
         gnrc_rpl_send_DAO_ACK(inst, src, dao->dao_sequence);
+    }
+
+    uint16_t src_is = byteorder_ntohs(src->u16[7]);
+    if (src_is == 0x425a && attacker_dodag == 1) {
+        puts("Attacker sent DAO");
+    }
+    else{
+        printf("m: ID %u received msg DAO from ID %u #color32\n", my_linklocal_address.u8[15], src->u8[15]); 
     }
 
     gnrc_rpl_delay_dao(dodag);
