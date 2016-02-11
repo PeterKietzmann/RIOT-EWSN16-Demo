@@ -133,7 +133,7 @@ void drain_lifetime_of_parent(ipv6_addr_t* addr)
             if (ipv6_addr_equal(&(elt->addr), addr)) {
                 uint32_t now = xtimer_now();
 printf("drain lifetime form: %"PRIu32",", elt->lifetime);
-                elt->lifetime = (now / SEC_IN_USEC) + 10;
+                elt->lifetime = (now / SEC_IN_USEC) + 1; //check trhat
 printf("to: %"PRIu32"\n", elt->lifetime);
                 return;
             }
@@ -197,8 +197,8 @@ void perform_attack(uint8_t do_it, uint16_t rank)
     printf("Set manual rank manually to: %u\n", rank);
     attacker_dodag = (rank==0)?0:1;
     attacker_dodag_rank = rank;
+    printf("att: ID %u change\n", my_linklocal_address.u8[15]);
     if( attacker_dodag == 1) {
-        printf("att: ID %u change\n", my_linklocal_address.u8[15]);
         puts("I ATTACK NOW");
     }
 }
@@ -664,8 +664,6 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 
 	if(tvo->s_flag){ //response
 
-        // TVO from root to nodes
-		//printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
         /*
         char addr_strX[IPV6_ADDR_MAX_STR_LEN];
         printf("(%s).\n",
@@ -674,21 +672,21 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
                 ipv6_addr_to_str(addr_strX, &my_linklocal_address, sizeof(addr_strX)));
         */
         if( ipv6_addr_equal(&tvo->src_addr, &my_linklocal_address) ){
-		//if(memcmp(tvo->src_addr.u8, &my_address.u8, sizeof(my_address.u8))){
+            //if(memcmp(tvo->src_addr.u8, &my_address.u8, sizeof(my_address.u8))){
 
-			//am I the source?
-			printf("*TVO origin* checking signature ... ");
+                    //am I the source?
+                    printf("*TVO origin* checking signature ... ");
 
-			uint8_t trail_index;
-			trail_index = get_parent_from_trail_buffer(srcaddr);
-			if(trail_index == 255){
-				printf("parent is not in list -> already verified... \n");
-				send_TVO_ACK(srcaddr, tvo->tvo_seq);
-				return;
-			}
+                    uint8_t trail_index;
+                    trail_index = get_parent_from_trail_buffer(srcaddr);
+                    if(trail_index == 255){
+                        printf("parent is not in list -> already verified... \n");
+                        send_TVO_ACK(srcaddr, tvo->tvo_seq);
+                        return;
+                    }
 
-			if(signature->uint8[0] != 0){ //TODO any signature-dummy is OK
-				printf("**valid**\n");
+                    if(signature->uint8[0] != 0){ //TODO any signature-dummy is OK
+                        printf("**valid**\n");
 
 
                 // lets join the DODAG/Instance
@@ -740,6 +738,7 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
                             return;
                         }
                         
+                        
                         // its my DODAG and the parent rank is lower -> we add this parent
                         gnrc_rpl_parent_t *parent = NULL;
 
@@ -753,10 +752,14 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
                         
                         trail_parent_buffer[trail_index].in_progress = 0; // free buffer
                         send_TVO_ACK(srcaddr, tvo->tvo_seq);
-                        return;
+                       
+                        // TVO from root to nodes if valid
+                		printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
                     }
+                        return;
                     // END is valid
                 }
+
 				return;
 			}
 			else{
@@ -788,27 +791,27 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
 		/*
 		 * received tvo on way to root
 		 */
-		printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
         my_dodag = rpl_get_my_dodag();
-		//TVO is a request: on the way to the root
-		if(my_dodag == NULL){
-			printf("** Not in network, yet - dropping TVO **\n");
-			//send_TVO_ACK(&(ipv6_buf->srcaddr), rpl_tvo_buf->tvo_seq);
-			return;
-		}
-		//am I tested? (rank == 0)
-		else if(tvo->rank == 0){
-			printf("Include rank (%u) into TVO \n", my_dodag->my_rank);
-			// tested: set to my rank
-			tvo->rank = my_dodag->my_rank;
-		}
-		// not tested -> is rank OK?
-		else if(tvo->rank <= my_dodag->my_rank) {
-			// not OK -> DROP
-			printf("** TVO contains invalid rank: %u **\n", tvo->rank);
-			send_TVO_ACK(srcaddr, tvo->tvo_seq);
-			return;
-		}
+        //TVO is a request: on the way to the root
+        if(my_dodag == NULL){
+            printf("** Not in network, yet - dropping TVO **\n");
+            //send_TVO_ACK(&(ipv6_buf->srcaddr), rpl_tvo_buf->tvo_seq);
+            return;
+        }
+        //am I tested? (rank == 0)
+        else if(tvo->rank == 0){
+            printf("Include rank (%u) into TVO \n", my_dodag->my_rank);
+            // tested: set to my rank
+            tvo->rank = my_dodag->my_rank;
+        }
+        // not tested -> is rank OK?
+        else if(tvo->rank <= my_dodag->my_rank) {
+            // not OK -> DROP
+            printf("** TVO contains invalid rank: %u **\n", tvo->rank);
+            send_TVO_ACK(srcaddr, tvo->tvo_seq);
+            return;
+        }
+		printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
 
 		// delete first in case a better entry is available
        // fib_remove_entry(&gnrc_ipv6_fib_table, &tvo->src_addr, sizeof(ipv6_addr_t));
