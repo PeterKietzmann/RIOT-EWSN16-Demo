@@ -142,7 +142,7 @@ int root_start(int argc, char **argv)
     }
     return 0;
 }
-
+uint8_t attack_ongoing_in_simulation = 0;
 int attack(int argc, char **argv)
 {
     //char ipv6_addr[IPV6_ADDR_MAX_STR_LEN];
@@ -158,11 +158,12 @@ int attack(int argc, char **argv)
         return 1;
     }
 
+    attack_ongoing_in_simulation = 1;
     if ( ipv6_addr_equal(&addr, &my_linklocal_address) ) {
         if ( argc > 2 ) {
             int rank = atoi(argv[2]);
             perform_attack( (uint8_t)1, (uint16_t)(rank));
-	} 
+    } 
         else {
             perform_attack( (uint8_t)1, 300);
         }
@@ -177,6 +178,8 @@ int attack(int argc, char **argv)
 int attack_auto(int argc, char **argv)
 {
     uint16_t me_is = byteorder_ntohs(my_linklocal_address.u16[7]);
+    attack_ongoing_in_simulation = 1;
+    printf("SET attack_ongoing_in_simulation to ONE\n");
    if (argc > 2) {
         ipv6_addr_t addr;
         ipv6_addr_from_str(&addr, argv[1]);
@@ -185,7 +188,8 @@ int attack_auto(int argc, char **argv)
         {
             perform_attack( (uint8_t)1, (uint16_t)(rank));
         }
-    } else {
+    } 
+    else {
         if (me_is == 0x425a) 
         {
             perform_attack( (uint8_t)1, 300);

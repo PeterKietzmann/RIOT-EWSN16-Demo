@@ -69,6 +69,8 @@ uint16_t attacker_rank = 0; // trail: rank of the attacker -> is constant
 uint8_t attacker_dodag = 0; // trail
 uint16_t attacker_dodag_rank = 0; // trail
 uint16_t attacker_dodag_honest_rank = GNRC_RPL_INFINITE_RANK;
+
+
 ipv6_addr_t my_linklocal_address; // trail
 
 struct rpl_tvo_local_t tvo_local_buffer[TVO_LOCAL_BUFFER_LEN]; //trail
@@ -753,8 +755,15 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
                         trail_parent_buffer[trail_index].in_progress = 0; // free buffer
                         send_TVO_ACK(srcaddr, tvo->tvo_seq);
                        
-                        // TVO from root to nodes if valid
-                		printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+
+                       if (attacker_dodag == 1) {
+
+                            puts("guard a wrong arrow plot because of internals");
+                        }
+                        else {
+                            // TVO from root to nodes if valid
+                    		printf("m: ID %u received msg TVO from ID %u #color9 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+                        }
                     }
                         return;
                     // END is valid
@@ -811,8 +820,18 @@ void recv_rpl_tvo(struct rpl_tvo_t *tvo, ipv6_addr_t *srcaddr){
             send_TVO_ACK(srcaddr, tvo->tvo_seq);
             return;
         }
-		printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
 
+        uint16_t src_is = byteorder_ntohs(srcaddr->u16[7]);
+        uint16_t me_is = byteorder_ntohs(my_linklocal_address.u16[7]);
+        if (src_is == 0x425a && attack_ongoing_in_simulation == 1) {
+            puts("Attacker sent TVO");
+        }
+        if (src_is == 0x3702 && me_is == 0x425a && attack_ongoing_in_simulation == 1) {
+            puts("Attacker received TVO from upper node");
+        }
+        else{
+		  printf("m: ID %u received msg TVO from ID %u #color8 - Seq. %u\n", my_linklocal_address.u8[15], srcaddr->u8[15], tvo->tvo_seq);
+        }
 		// delete first in case a better entry is available
        // fib_remove_entry(&gnrc_ipv6_fib_table, &tvo->src_addr, sizeof(ipv6_addr_t));
        // fib_remove_entry(&gnrc_ipv6_fib_table, &ipv6_buf->srcaddr, sizeof(ipv6_addr_t));

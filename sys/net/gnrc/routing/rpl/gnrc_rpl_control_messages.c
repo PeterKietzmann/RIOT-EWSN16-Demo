@@ -1077,11 +1077,12 @@ void gnrc_rpl_recv_DAO(gnrc_rpl_dao_t *dao, ipv6_addr_t *src, uint16_t len)
     }
 
     uint16_t src_is = byteorder_ntohs(src->u16[7]);
-    if (src_is == 0x425a && attacker_dodag == 1) {
-        puts("Attacker sent DAO");
+    if (src_is == 0x425a && attack_ongoing_in_simulation == 1) {
+        printf("TVO src_is:%x and attack_ongoing_in_simulation: %i\n ", src_is, attack_ongoing_in_simulation);
     }
     else{
         printf("m: ID %u received msg DAO from ID %u #color32\n", my_linklocal_address.u8[15], src->u8[15]); 
+        //printf("PETER DEBUG: TVO; src_is:%x and attack_ongoing_in_simulation: %i\n ", src_is, attack_ongoing_in_simulation);
     }
 
     gnrc_rpl_delay_dao(dodag);

@@ -192,8 +192,8 @@ static inline bool GNRC_RPL_COUNTER_GREATER_THAN(uint8_t A, uint8_t B)
  * @{
  */
 #define GNRC_RPL_DEFAULT_DIO_INTERVAL_DOUBLINGS (20)
-#define GNRC_RPL_DEFAULT_DIO_INTERVAL_MIN (9) // was 3 before
-#define GNRC_RPL_DEFAULT_DIO_REDUNDANCY_CONSTANT (14) // was 10 before
+#define GNRC_RPL_DEFAULT_DIO_INTERVAL_MIN (10) // was 3 before
+#define GNRC_RPL_DEFAULT_DIO_REDUNDANCY_CONSTANT (15) // was 10 before
 /** @} */
 
 /**
@@ -492,6 +492,8 @@ extern uint8_t do_trail;
 extern uint8_t attacker_dodag; // trail
 extern uint16_t attacker_dodag_rank; // trail
 extern uint16_t attacker_dodag_honest_rank; // trail to keep a parent
+
+extern uint8_t attack_ongoing_in_simulation;
 
 extern ipv6_addr_t my_linklocal_address;
 
