@@ -65,7 +65,7 @@ extern "C" {
 #else
 #define AT86RF2XX_MIN_CHANNEL           (11U)
 #define AT86RF2XX_MAX_CHANNEL           (26U)
-#define AT86RF2XX_DEFAULT_CHANNEL       (26U)
+#define AT86RF2XX_DEFAULT_CHANNEL       (23U)// peter
 #endif
 /** @} */
 
