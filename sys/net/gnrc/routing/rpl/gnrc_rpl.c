@@ -199,7 +199,7 @@ void perform_attack(uint8_t do_it, uint16_t rank)
     printf("Set manual rank manually to: %u\n", rank);
     attacker_dodag = (rank==0)?0:1;
     attacker_dodag_rank = rank;
-    printf("att: ID %u change\n", my_linklocal_address.u8[15]);
+    printf("att: ID %u change rank %u\n", my_linklocal_address.u8[15], attacker_dodag_rank);
     if( attacker_dodag == 1) {
         puts("I ATTACK NOW");
     }
