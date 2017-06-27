@@ -153,7 +153,7 @@ gnrc_rpl_parent_t *rpl_find_parent(ipv6_addr_t* src_addr)
     mutex_lock(&rpl_find_parent_mutex);
     for (uint8_t i = 0; i < GNRC_RPL_PARENTS_NUMOF; ++i) {
         parent = &gnrc_rpl_parents[i];
-        if (ipv6_addr_equal(&(parent->addr), src_addr) == (sizeof(*src_addr)<<3) ) {
+        if (ipv6_addr_equal(&(parent->addr), src_addr) /*== (sizeof(*src_addr)<<3)*/ ) {
             mutex_unlock(&rpl_find_parent_mutex);
             return parent;
         }
